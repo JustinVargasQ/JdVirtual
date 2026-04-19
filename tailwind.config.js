@@ -1,0 +1,69 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,jsx}'],
+  theme: {
+    extend: {
+      colors: {
+        // JD Brand — rose/cream
+        rose: {
+          50:  '#FBEEF0', 100: '#F6D9DF', 200: '#EDB7C1',
+          300: '#E39DAB', 400: '#D17D8D', 500: '#B85F72',
+          600: '#93485A', 700: '#723744',
+        },
+        ink: {
+          900: '#1A1414', 700: '#2E2626', 500: '#6B5F5F',
+          400: '#8E8383', 300: '#B8AFAF', 200: '#D8D1D1', 100: '#EFEAEA',
+        },
+        cream: { 50: '#FAF6F3', 100: '#F3ECE6', 200: '#E7DDD4' },
+        gold: '#C9A875',
+
+        // Anglu-inspired accents
+        navy:  { DEFAULT: '#072835', light: '#516971' },
+        sky:   { DEFAULT: '#69BBDD', light: '#EBF7FC' },
+        coral: '#C4301C',
+      },
+      fontFamily: {
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
+        body:    ['"Figtree"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        script:  ['"Dancing Script"', 'cursive'],
+      },
+      boxShadow: {
+        card:    '0 2px 16px 0 rgba(26,20,20,0.07)',
+        'card-hover': '0 8px 32px 0 rgba(26,20,20,0.14)',
+        modal:   '0 8px 48px 0 rgba(26,20,20,0.18)',
+        btn:     '0 2px 8px 0 rgba(184,95,114,0.25)',
+        'btn-hover': '0 4px 16px 0 rgba(184,95,114,0.4)',
+      },
+      borderRadius: { xl2: '1.25rem', xl3: '1.5rem' },
+      keyframes: {
+        'fade-up': {
+          '0%':   { opacity: '0', transform: 'translateY(24px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'fade-in': {
+          '0%':   { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        shimmer: {
+          '0%':   { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        marquee: {
+          '0%':   { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+      },
+      animation: {
+        'fade-up':  'fade-up 0.6s cubic-bezier(.3,1,.3,1) both',
+        'fade-in':  'fade-in 0.5s ease both',
+        'shimmer':  'shimmer 2s linear infinite',
+        'marquee':  'marquee 30s linear infinite',
+      },
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(.3,1,.3,1)',
+        'snappy': 'cubic-bezier(.4,0,.2,1)',
+      },
+    },
+  },
+  plugins: [],
+};

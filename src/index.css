@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Figtree:wght@400;500;600;700&family=Dancing+Script:wght@600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-white text-ink-900 font-body antialiased; }
+  #root { @apply min-h-screen; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-ink-900 hover:bg-rose-500 text-white font-semibold px-7 py-3.5 rounded-full transition-all duration-300 shadow-btn hover:shadow-btn-hover;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-semibold px-7 py-3.5 rounded-full transition-all duration-300;
+  }
+  .section-title {
+    @apply font-display text-4xl sm:text-5xl font-semibold text-ink-900 leading-tight;
+  }
+  .section-label {
+    @apply text-xs font-bold tracking-[0.2em] uppercase text-rose-500 mb-2 block;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .skeleton {
+    background: linear-gradient(90deg, #f0ebe8 25%, #faf6f3 50%, #f0ebe8 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  .text-balance { text-wrap: balance; }
+}
