@@ -200,23 +200,25 @@ function BrandMarquee() {
 /* ── Category chips — static local images ── */
 function CategoryRow({ onCatSelect }) {
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-center justify-center gap-4 sm:gap-8 overflow-x-auto scrollbar-hide pb-2">
-        {CATEGORIES.map((c, i) => (
-          <motion.button
-            key={c.cat}
-            onClick={() => onCatSelect(c.cat)}
-            initial={{ opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.06, duration: 0.45, ease: [0.3,1,0.3,1] }}
-            className="group flex flex-col items-center gap-2 flex-shrink-0">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-rose-400 transition-all duration-300 shadow-sm group-hover:shadow-md group-hover:scale-105 bg-cream-100">
-              <img src={c.img} alt={c.label} className="w-full h-full object-cover" loading="lazy" />
-            </div>
-            <span className="text-xs font-semibold text-ink-600 group-hover:text-rose-500 transition-colors">{c.label}</span>
-          </motion.button>
-        ))}
+    <section className="py-10 overflow-hidden">
+      <div className="overflow-x-auto scrollbar-hide">
+        <div className="flex items-center justify-start sm:justify-center gap-5 sm:gap-8 pb-2 px-6 sm:px-8 w-max sm:w-full mx-auto">
+          {CATEGORIES.map((c, i) => (
+            <motion.button
+              key={c.cat}
+              onClick={() => onCatSelect(c.cat)}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.06, duration: 0.45, ease: [0.3,1,0.3,1] }}
+              className="group flex flex-col items-center gap-2 flex-shrink-0">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-rose-400 transition-all duration-300 shadow-sm group-hover:shadow-md group-hover:scale-105 bg-cream-100">
+                <img src={c.img} alt={c.label} className="w-full h-full object-cover" loading="lazy" />
+              </div>
+              <span className="text-xs font-semibold text-ink-600 group-hover:text-rose-500 transition-colors">{c.label}</span>
+            </motion.button>
+          ))}
+        </div>
       </div>
     </section>
   );
