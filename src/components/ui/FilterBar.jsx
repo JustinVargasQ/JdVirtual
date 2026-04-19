@@ -5,8 +5,8 @@ export default function FilterBar({ cat, brand, onCat, onBrand }) {
   const brands = useBrands();
 
   const catLabels = {
-    todos: 'Todos', ojos: 'Ojos', labios: 'Labios',
-    rostro: 'Rostro', skincare: 'Skincare', cabello: 'Cabello', maquillaje: 'Maquillaje',
+    todos: 'Todos', skincare: 'Skin care', maquillaje: 'Maquillaje',
+    accesorios: 'Accesorios', perfumes: 'Perfumes', cabello: 'Cabello',
   };
 
   return (

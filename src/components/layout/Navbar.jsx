@@ -12,13 +12,12 @@ const ANNOUNCEMENTS = [
 ];
 
 const CATEGORIES = [
-  { label: 'Skincare', path: '/?cat=skincare' },
+  { label: 'Skin care',  path: '/?cat=skincare'   },
   { label: 'Maquillaje', path: '/?cat=maquillaje' },
-  { label: 'Labios', path: '/?cat=labios' },
-  { label: 'Ojos', path: '/?cat=ojos' },
-  { label: 'Rostro', path: '/?cat=rostro' },
-  { label: 'Cabello', path: '/?cat=cabello' },
-  { label: 'Todos los productos', path: '/' },
+  { label: 'Accesorios', path: '/?cat=accesorios' },
+  { label: 'Perfumes',   path: '/?cat=perfumes'   },
+  { label: 'Cabello',    path: '/?cat=cabello'    },
+  { label: 'Todo',       path: '/'                },
 ];
 
 /* ── Icons ── */
@@ -149,7 +148,7 @@ export default function Navbar() {
   return (
     <>
       {/* ── Announcement bar ── */}
-      <div className="bg-ink-900 text-white text-xs font-medium h-9 flex items-center justify-center overflow-hidden relative">
+      <div className="bg-ink-900 text-white text-xs font-medium h-9 flex items-center justify-center overflow-hidden relative z-50">
         <AnimatePresence mode="wait">
           <motion.span key={ann}
             initial={{ y: 12, opacity: 0 }}
@@ -162,116 +161,122 @@ export default function Navbar() {
         </AnimatePresence>
       </div>
 
-      {/* ── Main nav ── */}
-      <header className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? 'shadow-md' : 'border-b border-cream-200'}`}>
+      {/* ── Main nav — floating island ── */}
+      <div className="sticky top-3 z-50 px-4 sm:px-6">
+        <header
+          className={`max-w-7xl mx-auto rounded-full transition-all duration-300 ${
+            scrolled
+              ? 'bg-white/80 backdrop-blur-xl shadow-modal border border-white/60'
+              : 'bg-white/55 backdrop-blur-lg border border-white/60 shadow-card'
+          }`}
+          style={{ WebkitBackdropFilter: 'blur(18px) saturate(180%)' }}>
 
-        {/* Top row — logo + search + icons */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
+          {/* Top row — logo + search + icons */}
+          <div className="px-5 sm:px-7 h-[62px] flex items-center gap-4">
 
-          {/* Mobile menu btn */}
-          <button onClick={() => setMenuOpen(true)}
-            className="lg:hidden p-2 -ml-2 text-ink-700 hover:text-rose-500 transition-colors">
-            <MenuIcon />
-          </button>
-
-          {/* Logo */}
-          <Link to="/" className="flex-shrink-0 font-display text-2xl font-bold text-ink-900 tracking-tight mr-4">
-            JD <span className="text-rose-500">Virtual</span>
-          </Link>
-
-          {/* Search bar — desktop */}
-          <div ref={desktopRef} className="hidden md:block relative flex-1 max-w-xl">
-            <form onSubmit={handleSearch} className="flex items-center bg-cream-50 border border-cream-200 rounded-full px-4 py-2 gap-2 hover:border-rose-300 focus-within:border-rose-400 transition-colors">
-              <SearchIcon />
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => suggestions.length > 0 && setShowSugg(true)}
-                placeholder="¿Qué estás buscando?"
-                className="flex-1 bg-transparent text-sm text-ink-900 placeholder-ink-400 outline-none"
-              />
-              {query && (
-                <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setShowSugg(false); }}
-                  className="text-ink-300 hover:text-ink-600 transition-colors text-lg leading-none">×</button>
-              )}
-            </form>
-
-            {/* Suggestions dropdown */}
-            <AnimatePresence>
-              {showSugg && suggestions.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.18 }}
-                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-modal border border-cream-200 overflow-hidden z-50">
-                  {suggestions.map((p) => (
-                    <button key={p._id || p.id || p.slug} type="button"
-                      onClick={() => pickSuggestion(p.slug)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-cream-50 transition-colors text-left group">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-cream-100 flex-shrink-0">
-                        {p.img
-                          ? <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full bg-cream-200" />
-                        }
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-ink-900 truncate group-hover:text-rose-500 transition-colors">{p.name}</p>
-                        <p className="text-xs text-ink-400">{p.brand || 'JD Virtual'}</p>
-                      </div>
-                      <span className="text-sm font-bold text-ink-900 flex-shrink-0">{formatCRC(p.price)}</span>
-                    </button>
-                  ))}
-                  <button type="button" onClick={handleSearch}
-                    className="w-full flex items-center justify-center gap-2 py-3 border-t border-cream-100 text-sm text-rose-500 hover:bg-rose-50 font-medium transition-colors">
-                    <SearchIcon /> Ver todos los resultados de "{query}"
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Right icons */}
-          <div className="flex items-center gap-1 ml-auto lg:ml-0">
-            {/* Search mobile */}
-            <button onClick={() => setSearchOpen(true)}
-              className="md:hidden p-2 text-ink-700 hover:text-rose-500 transition-colors">
-              <SearchIcon />
+            {/* Mobile menu btn */}
+            <button onClick={() => setMenuOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-ink-700 hover:text-rose-500 transition-colors">
+              <MenuIcon />
             </button>
 
-            {/* WhatsApp */}
-            <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-green-600 hover:text-green-700 px-3 py-2 rounded-full hover:bg-green-50 transition-colors">
-              <WaIcon /> 8804-5100
-            </a>
+            {/* Logo */}
+            <Link to="/" className="flex-shrink-0 font-display text-xl font-bold text-ink-900 tracking-tight mr-4">
+              JD <span className="text-rose-500">Virtual</span>
+            </Link>
 
-            {/* Cart */}
-            <button onClick={openCart}
-              className="relative p-2 text-ink-700 hover:text-rose-500 transition-colors">
-              <CartIcon />
+            {/* Category links — desktop (centered) */}
+            <nav className="hidden lg:flex items-center gap-1 flex-1">
+              {CATEGORIES.map((c) => (
+                <NavCatLink key={c.label} cat={c} />
+              ))}
+            </nav>
+
+            {/* Search bar — desktop */}
+            <div ref={desktopRef} className="hidden md:block relative w-52 lg:w-60">
+              <form onSubmit={handleSearch} className="flex items-center bg-white/70 border border-cream-200 rounded-full px-3 py-1.5 gap-2 hover:border-rose-300 focus-within:border-rose-400 transition-colors">
+                <SearchIcon />
+                <input
+                  ref={searchRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowSugg(true)}
+                  placeholder="Buscar..."
+                  className="flex-1 bg-transparent text-sm text-ink-900 placeholder-ink-400 outline-none w-0"
+                />
+                {query && (
+                  <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setShowSugg(false); }}
+                    className="text-ink-300 hover:text-ink-600 transition-colors text-lg leading-none">×</button>
+                )}
+              </form>
+
+              {/* Suggestions dropdown */}
               <AnimatePresence>
-                {count > 0 && (
-                  <motion.span key="badge"
-                    initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                    className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {count > 9 ? '9+' : count}
-                  </motion.span>
+                {showSugg && suggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-modal border border-cream-200 overflow-hidden z-50">
+                    {suggestions.map((p) => (
+                      <button key={p._id || p.id || p.slug} type="button"
+                        onClick={() => pickSuggestion(p.slug)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-cream-50 transition-colors text-left group">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-cream-100 flex-shrink-0">
+                          {p.img
+                            ? <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full bg-cream-200" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-ink-900 truncate group-hover:text-rose-500 transition-colors">{p.name}</p>
+                          <p className="text-xs text-ink-400">{p.brand || 'JD Virtual'}</p>
+                        </div>
+                        <span className="text-sm font-bold text-ink-900 flex-shrink-0">{formatCRC(p.price)}</span>
+                      </button>
+                    ))}
+                    <button type="button" onClick={handleSearch}
+                      className="w-full flex items-center justify-center gap-2 py-3 border-t border-cream-100 text-sm text-rose-500 hover:bg-rose-50 font-medium transition-colors">
+                      <SearchIcon /> Ver todos los resultados de "{query}"
+                    </button>
+                  </motion.div>
                 )}
               </AnimatePresence>
-            </button>
-          </div>
-        </div>
+            </div>
 
-        {/* Category nav — desktop */}
-        <nav className="hidden lg:block border-t border-cream-100">
-          <div className="max-w-7xl mx-auto px-8 flex items-center gap-1 h-11">
-            {CATEGORIES.map((c) => (
-              <NavCatLink key={c.label} cat={c} />
-            ))}
+            {/* Right icons */}
+            <div className="flex items-center gap-1 ml-auto lg:ml-0">
+              {/* Search mobile */}
+              <button onClick={() => setSearchOpen(true)}
+                className="md:hidden p-2 text-ink-700 hover:text-rose-500 transition-colors">
+                <SearchIcon />
+              </button>
+
+              {/* WhatsApp */}
+              <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
+                className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-green-600 hover:text-green-700 px-3 py-2 rounded-full hover:bg-green-50 transition-colors">
+                <WaIcon /> 8804-5100
+              </a>
+
+              {/* Cart */}
+              <button onClick={openCart}
+                className="relative p-2 text-ink-700 hover:text-rose-500 transition-colors">
+                <CartIcon />
+                <AnimatePresence>
+                  {count > 0 && (
+                    <motion.span key="badge"
+                      initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {count > 9 ? '9+' : count}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+            </div>
           </div>
-        </nav>
-      </header>
+        </header>
+      </div>
 
       {/* ── Mobile drawer ── */}
       <AnimatePresence>

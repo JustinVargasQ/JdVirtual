@@ -109,6 +109,6 @@ export const PRODUCTS = [
   },
 ];
 
-export const CATEGORIES = ['todos', 'ojos', 'labios', 'rostro', 'skincare', 'cabello', 'maquillaje'];
+export const CATEGORIES = ['todos', 'skincare', 'maquillaje', 'accesorios', 'perfumes', 'cabello'];
 export const BRANDS = [...new Set(PRODUCTS.map(p => p.brand))];
 export const WHATSAPP_NUMBER = '50688045100';

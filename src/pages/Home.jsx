@@ -22,8 +22,8 @@ const SLIDE_CONFIG = [
     sub: 'Productos auténticos con resultados reales para tu rutina diaria.',
     cta: 'Ver skincare',
     cat: 'skincare',
-    bg: '#EEF7FB',
-    accent: '#3B82A0',
+    bg: '#FBEEF2',
+    accent: '#A04B60',
   },
   {
     tag: 'Maquillaje',
@@ -31,25 +31,29 @@ const SLIDE_CONFIG = [
     sub: 'Las marcas que amas al mejor precio en Costa Rica.',
     cta: 'Ver maquillaje',
     cat: 'maquillaje',
-    bg: '#FBF6EE',
-    accent: '#B8842A',
+    bg: '#F7E8ED',
+    accent: '#C4728A',
   },
 ];
 
 const CATEGORIES = [
-  { label: 'Skincare',   cat: 'skincare'   },
-  { label: 'Maquillaje', cat: 'maquillaje' },
-  { label: 'Labios',     cat: 'labios'     },
-  { label: 'Ojos',       cat: 'ojos'       },
-  { label: 'Rostro',     cat: 'rostro'     },
-  { label: 'Cabello',    cat: 'cabello'    },
+  { label: 'Skin care',   cat: 'skincare',   img: '/imgs/Skincare.jpeg'    },
+  { label: 'Maquillaje',  cat: 'maquillaje', img: '/imgs/Maquillaje.jpeg'  },
+  { label: 'Accesorios',  cat: 'accesorios', img: '/imgs/Accesorios.jpeg'  },
+  { label: 'Perfumes',    cat: 'perfumes',   img: '/imgs/Perfume.jpeg'     },
+  { label: 'Cabello',     cat: 'cabello',    img: '/imgs/Cabello.jpeg'     },
 ];
 
+const TruckIcon   = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"/><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"/><circle cx="7" cy="18" r="2"/><path d="M15 18H9"/><circle cx="17" cy="18" r="2"/></svg>;
+const ShieldIcon  = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"/><path d="M20 6 9 17l-5-5"/></svg>;
+const ChatIcon    = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+const CardIcon    = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>;
+
 const TRUST = [
-  { icon: '🚚', title: 'Envíos a todo CR',       sub: 'Correos, Uber, Express' },
-  { icon: '✅', title: 'Originales 100%',         sub: 'Marcas auténticas' },
-  { icon: '💬', title: 'Atención WhatsApp',       sub: 'Respuesta rápida' },
-  { icon: '💳', title: 'SINPE / Transferencia',   sub: 'Pago seguro' },
+  { Icon: TruckIcon,  title: 'Envíos a todo CR',       sub: 'Correos, Uber, Express' },
+  { Icon: ShieldIcon, title: 'Originales 100%',         sub: 'Marcas auténticas' },
+  { Icon: ChatIcon,   title: 'Atención WhatsApp',       sub: 'Respuesta rápida' },
+  { Icon: CardIcon,   title: 'SINPE / Transferencia',   sub: 'Pago seguro' },
 ];
 
 const MARQUEE_BRANDS = ['Beauty Creations','The Ordinary','CeraVe','Italia Deluxe','ELF','Beau Visage','Amor Us','Mixsoon','Ushas','Amuse','Celavi','Kevin y Coco'];
@@ -184,8 +188,8 @@ function BrandMarquee() {
     <div className="bg-ink-900 py-3.5 overflow-hidden">
       <div className="flex animate-marquee whitespace-nowrap">
         {doubled.map((b, i) => (
-          <span key={i} className="text-white/50 text-[11px] font-semibold uppercase tracking-[0.22em] mx-8 flex-shrink-0">
-            {b} <span className="text-rose-400 ml-8">·</span>
+          <span key={i} className="text-rose-400 text-[11px] font-semibold uppercase tracking-[0.22em] mx-8 flex-shrink-0">
+            {b} <span className="text-rose-600 ml-8">·</span>
           </span>
         ))}
       </div>
@@ -193,32 +197,26 @@ function BrandMarquee() {
   );
 }
 
-/* ── Category chips — circular images from real products ── */
-function CategoryRow({ onCatSelect, categoryImages }) {
+/* ── Category chips — static local images ── */
+function CategoryRow({ onCatSelect }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex items-center justify-center gap-4 sm:gap-8 overflow-x-auto scrollbar-hide pb-2">
-        {CATEGORIES.map((c, i) => {
-          const img = categoryImages[c.cat];
-          return (
-            <motion.button
-              key={c.cat}
-              onClick={() => onCatSelect(c.cat)}
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.06, duration: 0.45, ease: [0.3,1,0.3,1] }}
-              className="group flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-rose-400 transition-all duration-300 shadow-sm group-hover:shadow-md group-hover:scale-105 bg-cream-100 flex items-center justify-center">
-                {img
-                  ? <img src={img} alt={c.label} className="w-full h-full object-cover" loading="lazy" />
-                  : <span className="text-2xl">{c.label[0]}</span>
-                }
-              </div>
-              <span className="text-xs font-semibold text-ink-600 group-hover:text-rose-500 transition-colors">{c.label}</span>
-            </motion.button>
-          );
-        })}
+        {CATEGORIES.map((c, i) => (
+          <motion.button
+            key={c.cat}
+            onClick={() => onCatSelect(c.cat)}
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.06, duration: 0.45, ease: [0.3,1,0.3,1] }}
+            className="group flex flex-col items-center gap-2 flex-shrink-0">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-rose-400 transition-all duration-300 shadow-sm group-hover:shadow-md group-hover:scale-105 bg-cream-100">
+              <img src={c.img} alt={c.label} className="w-full h-full object-cover" loading="lazy" />
+            </div>
+            <span className="text-xs font-semibold text-ink-600 group-hover:text-rose-500 transition-colors">{c.label}</span>
+          </motion.button>
+        ))}
       </div>
     </section>
   );
@@ -237,7 +235,7 @@ function TrustBar() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.07, duration: 0.4 }}
               className="flex items-center gap-3">
-              <span className="text-2xl">{t.icon}</span>
+              <span className="text-rose-500 flex-shrink-0"><t.Icon /></span>
               <div>
                 <p className="text-sm font-bold text-ink-900 leading-tight">{t.title}</p>
                 <p className="text-xs text-ink-400 leading-tight">{t.sub}</p>
@@ -312,10 +310,13 @@ function SkeletonCard() {
   );
 }
 
+const PAGE_SIZE = 8;
+
 /* ── Main catalog ── */
 function Catalog({ externalCat, catalogRef }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [animKey, setAnimKey] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Single source of truth: URL params (no duplicate state)
   const cat   = searchParams.get('cat')   || 'todos';
@@ -331,6 +332,7 @@ function Catalog({ externalCat, catalogRef }) {
       return np;
     });
     setAnimKey((k) => k + 1);
+    setVisibleCount(PAGE_SIZE);
   };
 
   // Accept external category changes (hero / category row clicks)
@@ -347,7 +349,11 @@ function Catalog({ externalCat, catalogRef }) {
   const catLabel = {
     todos: 'Todos los productos', ojos: 'Ojos', labios: 'Labios',
     rostro: 'Rostro', skincare: 'Skincare', cabello: 'Cabello', maquillaje: 'Maquillaje',
+    accesorios: 'Accesorios', perfumes: 'Perfumes',
   }[cat] || cat;
+
+  const visible   = products.slice(0, visibleCount);
+  const hasMore   = visibleCount < products.length;
 
   return (
     <section ref={catalogRef} id="tienda" className="bg-white py-20">
@@ -393,19 +399,39 @@ function Catalog({ externalCat, catalogRef }) {
             <motion.div key="empty"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="text-center py-24">
-              <p className="text-5xl mb-4">🔍</p>
+              <svg className="mx-auto mb-4 text-ink-300" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               <p className="text-ink-400 text-lg font-medium">No encontramos productos con esos filtros.</p>
               <button onClick={() => handleCat('todos')} className="mt-5 text-rose-500 font-semibold hover:underline">
                 Ver todos los productos
               </button>
             </motion.div>
           ) : (
-            <motion.div key={`grid-${animKey}`}
-              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.38, ease: [0.3,1,0.3,1] }}
-              className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-              {products.map((p, i) => <ProductCard key={p.id || p._id} product={p} index={i} />)}
-            </motion.div>
+            <>
+              <motion.div key={`grid-${animKey}`}
+                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.38, ease: [0.3,1,0.3,1] }}
+                className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+                {visible.map((p, i) => <ProductCard key={p.id || p._id} product={p} index={i} />)}
+              </motion.div>
+
+              {hasMore && (
+                <div className="mt-10 flex justify-center">
+                  <motion.button
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                    onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                    className="inline-flex items-center gap-2 border-2 border-rose-400 text-rose-500 hover:bg-rose-500 hover:text-white font-semibold px-8 py-3 rounded-full transition-all duration-300">
+                    Ver más productos
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </motion.button>
+                </div>
+              )}
+
+              {!hasMore && products.length > PAGE_SIZE && (
+                <p className="mt-8 text-center text-sm text-ink-400">
+                  Mostrando todos los {products.length} productos
+                </p>
+              )}
+            </>
           )}
         </AnimatePresence>
       </div>
@@ -414,25 +440,21 @@ function Catalog({ externalCat, catalogRef }) {
 }
 
 /* ── About ── */
-function AboutSection({ categoryImages }) {
-  const imgs = Object.values(categoryImages).filter(Boolean);
-  const img1 = imgs[0] || '';
-  const img2 = imgs[1] || '';
-
+function AboutSection() {
   return (
     <section id="nosotras" className="bg-ink-900 text-white py-24 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-16 items-center">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div
-          initial={{ opacity: 0, x: -40 }} whileInView={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.7, ease: [0.3,1,0.3,1] }}>
           <span className="text-xs font-bold tracking-[0.2em] uppercase text-rose-400 mb-4 block">Nosotras</span>
           <h2 className="font-display text-4xl sm:text-5xl font-bold leading-tight mb-6">
-            Tu tienda de<br /><em className="text-rose-400 not-italic">confianza</em> en CR
+            Tu tienda de <em className="text-rose-400 not-italic">confianza</em> en CR
           </h2>
-          <p className="text-white/70 leading-relaxed mb-4">
+          <p className="text-white/70 leading-relaxed mb-4 max-w-2xl mx-auto">
             Somos JD Virtual Store, desde El Roble, Puntarenas. Nos especializamos en maquillaje y skincare de marcas auténticas al mejor precio.
           </p>
-          <p className="text-white/70 leading-relaxed mb-8">
+          <p className="text-white/70 leading-relaxed mb-8 max-w-2xl mx-auto">
             Cada producto es cuidadosamente seleccionado. Atendemos por WhatsApp con respuesta rápida y enviamos a toda Costa Rica.
           </p>
           <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
@@ -440,26 +462,71 @@ function AboutSection({ categoryImages }) {
             <WaIcon /> Escríbenos
           </a>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }} transition={{ duration: 0.7, ease: [0.3,1,0.3,1], delay: 0.15 }}
-          className="grid grid-cols-2 gap-4">
-          {img1 && <img src={img1} alt="" className="rounded-2xl object-cover aspect-square" />}
-          {img2 && <img src={img2} alt="" className="rounded-2xl object-cover aspect-square mt-8" />}
-          {!img1 && <div className="rounded-2xl bg-white/10 aspect-square" />}
-          {!img2 && <div className="rounded-2xl bg-white/10 aspect-square mt-8" />}
-        </motion.div>
       </div>
     </section>
   );
 }
 
+/* ── Testimonials ── */
+const TESTIMONIALS = [
+  { quote: 'Llegó en 2 días en perfecto estado. La paleta es idéntica a la foto.',    name: 'María F.',      city: 'Heredia',       tag: 'Ojos' },
+  { quote: 'Ya es mi tercera compra. Siempre responden rapidísimo por WhatsApp.',     name: 'Daniela R.',    city: 'San José',      tag: 'Skincare' },
+  { quote: 'Precios mejores que en el mall y todo original, 100% recomendadas.',       name: 'Andrea S.',     city: 'Liberia',       tag: 'Maquillaje' },
+  { quote: 'Me asesoraron por WhatsApp para elegir mi tono de base. Atención de 10.', name: 'Karen M.',      city: 'Pérez Zeledón', tag: 'Rostro' },
+  { quote: 'Las retiré en El Roble, súper fácil y super amables.',                     name: 'Valeria C.',    city: 'Puntarenas',    tag: 'Labios' },
+  { quote: 'El envío llegó rapidísimo. Todo bien empacado y sellado.',                 name: 'Sofía P.',      city: 'Alajuela',      tag: 'Skincare' },
+  { quote: 'Empaque bellísimo, se nota que le ponen amor a cada pedido.',              name: 'Natalia B.',    city: 'Cartago',       tag: 'Maquillaje' },
+  { quote: 'Mi paleta favorita. Volveré por más, sin dudarlo.',                         name: 'Fiorella G.',   city: 'San Ramón',     tag: 'Ojos' },
+  { quote: 'Envío llegó antes de lo esperado. Recomendadísimas a todas mis amigas.',  name: 'Stephanie L.',  city: 'Guanacaste',    tag: 'Skincare' },
+];
+
+function TestimonialsSection() {
+  const col1 = TESTIMONIALS.filter((_, i) => i % 3 === 0);
+  const col2 = TESTIMONIALS.filter((_, i) => i % 3 === 1);
+  const col3 = TESTIMONIALS.filter((_, i) => i % 3 === 2);
+
+  const TestimonialCard = ({ t }) => (
+    <div className="bg-white rounded-2xl p-6 border border-cream-200 hover:border-rose-200 hover:shadow-card transition-all duration-300 mb-4">
+      <div className="text-rose-400 text-base mb-3">★★★★★</div>
+      <p className="text-ink-700 text-sm leading-relaxed mb-4">"{t.quote}"</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-ink-900">{t.name}</p>
+          <p className="text-xs text-ink-400">{t.city}</p>
+        </div>
+        <span className="text-xs font-semibold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full">{t.tag}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <section className="bg-cream-50 py-20 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <span className="section-label">Lo que dicen nuestras clientas</span>
+          <h2 className="section-title">Miles de reseñas, <em className="font-display italic text-rose-500">una sola promesa</em></h2>
+          <p className="text-ink-500 mt-3 max-w-xl mx-auto text-sm">Productos originales, envío rápido y atención cercana. Así trabajamos desde el día uno.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>{col1.map((t, i) => <TestimonialCard key={i} t={t} />)}</div>
+          <div className="md:mt-8">{col2.map((t, i) => <TestimonialCard key={i} t={t} />)}</div>
+          <div>{col3.map((t, i) => <TestimonialCard key={i} t={t} />)}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const BoxIcon       = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>;
+const ZapIcon       = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+const HandshakeIcon = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/><path d="m9 12 2 2 4-4"/></svg>;
+
 /* ── Shipping ── */
 function ShippingSection() {
   const methods = [
-    { icon: '📦', title: 'Correos de CR',       desc: '3–5 días hábiles a todo el país. Desde ₡2,000.' },
-    { icon: '⚡', title: 'Express Puntarenas',  desc: 'Mismo día o siguiente en zona Puntarenas.' },
-    { icon: '🤝', title: 'Retiro en El Roble',  desc: 'Gratis. Coordinamos lugar y hora por WhatsApp.' },
+    { Icon: BoxIcon,       title: 'Correos de CR',       desc: '3–5 días hábiles a todo el país. Desde ₡2,000.' },
+    { Icon: ZapIcon,       title: 'Express Puntarenas',  desc: 'Mismo día o siguiente en zona Puntarenas.' },
+    { Icon: HandshakeIcon, title: 'Retiro en El Roble',  desc: 'Gratis. Coordinamos lugar y hora por WhatsApp.' },
   ];
   return (
     <section id="envios" className="bg-cream-50 py-20">
@@ -474,7 +541,7 @@ function ShippingSection() {
               initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5, ease: [0.3,1,0.3,1] }}
               className="bg-white border border-cream-200 rounded-3xl p-8 text-center hover:border-rose-200 hover:shadow-card-hover transition-all duration-500">
-              <div className="text-5xl mb-5">{m.icon}</div>
+              <div className="text-rose-500 mb-5 flex justify-center"><m.Icon /></div>
               <h3 className="font-display text-xl font-semibold text-ink-900 mb-3">{m.title}</h3>
               <p className="text-ink-500 text-sm leading-relaxed">{m.desc}</p>
             </motion.div>
@@ -509,11 +576,12 @@ export default function Home() {
       <Hero onCatSelect={handleCatSelect} categoryImages={categoryImages} />
       <BrandMarquee />
       <TrustBar />
-      <CategoryRow onCatSelect={handleCatSelect} categoryImages={categoryImages} />
+      <CategoryRow onCatSelect={handleCatSelect} />
       <FeaturedSection />
       <PromoBanner />
       <Catalog externalCat={selectedCat} catalogRef={catalogRef} />
-      <AboutSection categoryImages={categoryImages} />
+      <TestimonialsSection />
+      <AboutSection />
       <ShippingSection />
     </main>
   );

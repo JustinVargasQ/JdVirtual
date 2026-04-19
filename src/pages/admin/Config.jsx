@@ -7,8 +7,8 @@ export default function AdminConfig() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-semibold text-ink-900 mb-8">Configuración</h1>
-      <div className="max-w-xl bg-white rounded-xl2 shadow-card p-8 space-y-6">
+      <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 mb-6">Configuración</h1>
+      <div className="max-w-xl bg-white rounded-xl2 shadow-card p-5 sm:p-8 space-y-6">
         <div>
           <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Número WhatsApp</label>
           <input value={form.whatsapp} onChange={set('whatsapp')} placeholder="50688045100" className={inputCls} />
