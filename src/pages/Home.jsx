@@ -5,30 +5,6 @@ import ProductCard from '../components/ui/ProductCard';
 import FilterBar from '../components/ui/FilterBar';
 import { useProducts, useFeatured, useCategoryPreviews } from '../hooks/useProducts';
 
-/* ─── Slide config ─── */
-const SLIDE_CONFIG = [
-  {
-    tag: '✨ Nuevos ingresos',
-    title: 'Tu nueva\nobsesión',
-    sub:  'Maquillaje y skincare de marcas originales con envíos a todo Costa Rica.',
-    cta:  'Ver catálogo',
-    cat:  null,
-  },
-  {
-    tag: '🌿 Skincare coreano',
-    title: 'Cuida tu\npiel hoy',
-    sub:  'Productos auténticos con resultados reales para tu rutina diaria.',
-    cta:  'Ver skincare',
-    cat:  'skincare',
-  },
-  {
-    tag: '💄 Maquillaje',
-    title: 'Brilla con\ntu estilo',
-    sub:  'Las marcas que amas al mejor precio en Costa Rica.',
-    cta:  'Ver maquillaje',
-    cat:  'maquillaje',
-  },
-];
 
 const CATEGORIES = [
   { label: 'Skin care',  cat: 'skincare',   img: '/imgs/Skincare.jpeg'   },
@@ -57,11 +33,6 @@ const WaIcon = () => (
   </svg>
 );
 
-const ChevronIcon = ({ dir }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    {dir === 'left' ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
-  </svg>
-);
 
 const BoxIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>;
 const ZapIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
@@ -78,245 +49,190 @@ function CountNum({ to, duration = 1.8, delay = 0.5 }) {
   return <motion.span>{rounded}</motion.span>;
 }
 
-/* ─── Sparkle particles ─── */
-const SPARKLE_DEFS = [
-  { x: '7%',  y: '70%', s: 4, d: '0s',    t: '3.3s' },
-  { x: '15%', y: '58%', s: 3, d: '0.8s',  t: '2.9s' },
-  { x: '25%', y: '78%', s: 5, d: '1.4s',  t: '3.7s' },
-  { x: '34%', y: '52%', s: 3, d: '0.3s',  t: '2.6s' },
-  { x: '46%', y: '72%', s: 4, d: '2.1s',  t: '3.1s' },
-  { x: '55%', y: '63%', s: 3, d: '1.0s',  t: '2.8s' },
-  { x: '64%', y: '80%', s: 5, d: '0.2s',  t: '3.6s' },
-  { x: '73%', y: '55%', s: 3, d: '1.7s',  t: '2.7s' },
-  { x: '81%', y: '68%', s: 4, d: '0.9s',  t: '3.2s' },
-  { x: '89%', y: '83%', s: 3, d: '2.3s',  t: '2.5s' },
-  { x: '20%', y: '38%', s: 4, d: '1.6s',  t: '4.1s' },
-  { x: '68%', y: '42%', s: 3, d: '0.6s',  t: '3.4s' },
-  { x: '42%', y: '30%', s: 4, d: '2.6s',  t: '3.9s' },
-  { x: '88%', y: '35%', s: 3, d: '1.2s',  t: '3.0s' },
-];
+/* ─── Hero — Static premium ─── */
+function Hero({ onCatSelect }) {
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
+  const parallaxX = useTransform(mouseX, [0, 1], ['1.5%', '-1.5%']);
+  const parallaxY = useTransform(mouseY, [0, 1], ['1%', '-1%']);
 
-const STAR_DEFS = [
-  { x: '18%', y: '28%', d: '1.3s', t: '4.8s' },
-  { x: '74%', y: '22%', d: '2.7s', t: '5.2s' },
-  { x: '50%', y: '18%', d: '0.4s', t: '4.0s' },
-  { x: '32%', y: '45%', d: '3.0s', t: '4.5s' },
-];
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    mouseX.set((e.clientX - rect.left) / rect.width);
+    mouseY.set((e.clientY - rect.top) / rect.height);
+  };
 
-function SparkleParticles() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden z-[5]">
-      {SPARKLE_DEFS.map((s, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full bg-white/75"
-          style={{
-            left: s.x, top: s.y,
-            width: s.s, height: s.s,
-            animationName: 'sparkle-float',
-            animationDuration: s.t,
-            animationDelay: s.d,
-            animationTimingFunction: 'ease-out',
-            animationIterationCount: 'infinite',
-          }}
-        />
-      ))}
-      {STAR_DEFS.map((s, i) => (
-        <div
-          key={`star-${i}`}
-          className="absolute text-white/50 text-xs select-none"
-          style={{
-            left: s.x, top: s.y,
-            animationName: 'sparkle-float',
-            animationDuration: s.t,
-            animationDelay: s.d,
-            animationTimingFunction: 'ease-out',
-            animationIterationCount: 'infinite',
-          }}>
-          ✦
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── Hero ─── */
-function Hero({ onCatSelect, categoryImages }) {
-  const [current, setCurrent] = useState(0);
-  const [paused, setPaused]   = useState(false);
-
-  const SLIDES = SLIDE_CONFIG.map((s) => ({
-    ...s,
-    img: s.cat ? categoryImages[s.cat] : (Object.values(categoryImages)[0] || ''),
-  }));
-  const total = SLIDES.length;
-  const slide = SLIDES[current];
-
-  useEffect(() => {
-    if (paused) return;
-    const t = setInterval(() => setCurrent((c) => (c + 1) % total), 5500);
-    return () => clearInterval(t);
-  }, [paused, total]);
-
-  const prev = () => { setPaused(true); setCurrent((c) => (c - 1 + total) % total); };
-  const next = () => { setPaused(true); setCurrent((c) => (c + 1) % total); };
+  const TRUST_ITEMS = ['Envíos a todo CR', 'Marcas originales', 'Pago con SINPE'];
 
   return (
     <section
-      className="relative flex flex-col justify-end overflow-hidden"
+      className="relative flex flex-col overflow-hidden"
       style={{ minHeight: '100svh' }}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}>
+      onMouseMove={handleMouseMove}
+    >
+      {/* Background — static + Ken Burns + parallax */}
+      <motion.div className="absolute inset-0" style={{ x: parallaxX, y: parallaxY }}>
+        <motion.img
+          src="/imgs/makeup.jpg"
+          alt="JD Virtual Store — Maquillaje y Skincare"
+          className="w-full h-full object-cover object-center"
+          style={{ minHeight: '108svh' }}
+          initial={{ scale: 1.08 }}
+          animate={{ scale: 1.04 }}
+          transition={{ duration: 9, ease: 'linear' }}
+        />
+      </motion.div>
 
-      {/* Background image — crossfade */}
-      <AnimatePresence mode="wait">
+      {/* Overlay — cinematic dark gradient */}
+      <div className="absolute inset-0 z-[1] pointer-events-none"
+        style={{ background: 'linear-gradient(180deg, rgba(10,6,8,0.62) 0%, rgba(10,6,8,0.38) 28%, rgba(10,6,8,0.50) 52%, rgba(10,6,8,0.82) 80%, rgba(10,6,8,0.97) 100%)' }}
+      />
+      <div className="absolute inset-0 z-[1] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 115% 105% at 50% 50%, transparent 28%, rgba(6,3,5,0.62) 100%)' }}
+      />
+
+      {/* Ambient rose glows */}
+      <div className="pointer-events-none absolute top-1/4 right-[8%] w-[30rem] h-[30rem] rounded-full blur-[90px] z-[1]"
+        style={{ background: 'radial-gradient(circle, rgba(184,95,114,0.2) 0%, transparent 70%)' }} />
+      <div className="pointer-events-none absolute bottom-1/3 left-[4%] w-72 h-72 rounded-full blur-[70px] z-[1]"
+        style={{ background: 'radial-gradient(circle, rgba(184,95,114,0.25) 0%, transparent 70%)' }} />
+
+      {/* Main content — centered */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 sm:px-10 pt-28 pb-28">
         <motion.div
-          key={`bg-${current}`}
-          className="absolute inset-0"
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1, ease: [0.3, 1, 0.3, 1] }}>
-          <img
-            src={slide.img}
-            alt={slide.tag}
-            className="w-full h-full object-cover object-center"
-            style={{ minHeight: '100svh' }}
-          />
-          {/* Dark gradient overlay */}
-          <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to top, rgba(18,10,12,0.97) 0%, rgba(18,10,12,0.65) 38%, rgba(18,10,12,0.22) 65%, rgba(18,10,12,0.35) 100%)' }} />
-          {/* Rose tint at bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-80"
-            style={{ background: 'linear-gradient(to top, rgba(184,95,114,0.28), transparent)' }} />
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Floating sparkle particles */}
-      <SparkleParticles />
-
-      {/* Ambient orbs */}
-      <div className="pointer-events-none absolute top-[10%] right-[5%] w-72 h-72 sm:w-[28rem] sm:h-[28rem] rounded-full bg-rose-500/18 blur-3xl animate-orb-pulse" />
-      <div className="pointer-events-none absolute top-[50%] left-[2%] w-48 h-48 sm:w-72 sm:h-72 rounded-full bg-rose-300/12 blur-3xl animate-orb-pulse" style={{ animationDelay: '2.5s' }} />
-      <div className="pointer-events-none absolute bottom-[15%] right-[25%] w-40 h-40 rounded-full bg-[#C9A875]/12 blur-2xl animate-orb-pulse" style={{ animationDelay: '1.2s' }} />
-
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pb-20 sm:pb-28 pt-36">
-        <AnimatePresence mode="wait">
+          className="flex flex-col items-center w-full max-w-3xl mx-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7 }}
+        >
+          {/* Eyebrow — rose lines */}
           <motion.div
-            key={current}
-            initial={{ opacity: 0, y: 36 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -18 }}
-            transition={{ duration: 0.65, ease: [0.3, 1, 0.3, 1] }}>
-
-            {/* Pill badge — breathe animation */}
-            <motion.div
-              initial={{ opacity: 0, x: -24 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.55 }}
-              className="mb-6">
-              <span
-                className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase px-4 py-2 rounded-full text-white border border-white/20 animate-breathe"
-                style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(14px)' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
-                {slide.tag}
-              </span>
-            </motion.div>
-
-            {/* Headline — animated shimmer gradient */}
-            <motion.h1
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18, duration: 0.65 }}
-              className="font-display font-bold leading-[0.95] whitespace-pre-line mb-6 text-gradient-hero drop-shadow-2xl"
-              style={{ fontSize: 'clamp(3.2rem, 12vw, 8rem)' }}>
-              {slide.title}
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.55 }}
-              className="text-white/72 text-base sm:text-lg leading-relaxed mb-9 max-w-md">
-              {slide.sub}
-            </motion.p>
-
-            {/* CTAs */}
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.42, duration: 0.5 }}
-              className="flex flex-wrap gap-3 mb-12">
-              <button
-                onClick={() => onCatSelect(slide.cat)}
-                className="group inline-flex items-center gap-2 font-bold text-sm sm:text-base px-8 py-4 rounded-full text-ink-900 bg-white hover:bg-rose-50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.04] active:scale-[0.98]">
-                {slide.cta}
-                <span className="group-hover:translate-x-1.5 transition-transform duration-300 text-lg">→</span>
-              </button>
-              <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-bold text-sm sm:text-base px-8 py-4 rounded-full text-white bg-[#25D366] hover:bg-[#1db954] transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.04] active:scale-[0.98]">
-                <WaIcon /> Pedir ahora
-              </a>
-            </motion.div>
-
-            {/* Stats — count-up on each slide change */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.55 }}
-              className="flex items-center gap-6 sm:gap-8 flex-wrap">
-              <div>
-                <p className="text-2xl sm:text-3xl font-bold text-white leading-none tabular-nums">
-                  <CountNum to={1000} duration={2} delay={0.8} />+
-                </p>
-                <p className="text-[11px] text-white/55 mt-1 uppercase tracking-wider">Clientas felices</p>
-              </div>
-              <div className="w-px h-10 bg-white/20 hidden sm:block" />
-              <div>
-                <p className="text-2xl sm:text-3xl font-bold text-white leading-none tabular-nums">
-                  <CountNum to={50} duration={1.5} delay={0.9} />+
-                </p>
-                <p className="text-[11px] text-white/55 mt-1 uppercase tracking-wider">Marcas originales</p>
-              </div>
-              <div className="w-px h-10 bg-white/20 hidden sm:block" />
-              <div>
-                <p className="text-2xl sm:text-3xl font-bold text-white leading-none">CR</p>
-                <p className="text-[11px] text-white/55 mt-1 uppercase tracking-wider">Todo el país</p>
-              </div>
-            </motion.div>
+            transition={{ delay: 0.15, duration: 0.5 }}
+            className="flex items-center gap-3 mb-8"
+          >
+            <div className="w-8 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(184,95,114,0.7))' }} />
+            <span className="text-[10px] font-semibold tracking-[0.35em] uppercase" style={{ color: 'rgba(209,125,141,0.85)' }}>
+              Colección 2025
+            </span>
+            <div className="w-8 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(184,95,114,0.7))' }} />
           </motion.div>
-        </AnimatePresence>
 
-        {/* Slide controls */}
-        <div className="absolute bottom-7 right-5 sm:right-8 flex items-center gap-2.5 z-20">
-          <button onClick={prev}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white border border-white/25 hover:border-white/60 transition-colors"
-            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}>
-            <ChevronIcon dir="left" />
-          </button>
-          <div className="flex gap-1.5">
-            {SLIDES.map((_, i) => (
-              <button key={i} onClick={() => { setPaused(true); setCurrent(i); }}
-                className={`rounded-full transition-all duration-400 ${i === current ? 'w-7 h-2 bg-white' : 'w-2 h-2 bg-white/35 hover:bg-white/65'}`} />
-            ))}
-          </div>
-          <button onClick={next}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white border border-white/25 hover:border-white/60 transition-colors"
-            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}>
-            <ChevronIcon dir="right" />
-          </button>
-        </div>
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.7, ease: [0.25, 1, 0.25, 1] }}
+            className="font-display font-bold leading-[0.95] tracking-tight text-white whitespace-pre-line mb-5"
+            style={{ fontSize: 'clamp(3.4rem, 11vw, 7rem)', textShadow: '0 2px 40px rgba(0,0,0,0.45)' }}
+          >
+            {'Tu nueva\nobsesión'}
+          </motion.h1>
+
+          {/* Rose accent bar */}
+          <motion.div
+            className="h-px rounded-full mb-6"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 44, opacity: 1 }}
+            transition={{ delay: 0.42, duration: 0.6, ease: [0.25, 1, 0.25, 1] }}
+            style={{ background: 'linear-gradient(90deg, transparent, #B85F72, transparent)' }}
+          />
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.34, duration: 0.6 }}
+            className="text-white/58 text-base sm:text-lg leading-relaxed mb-9 max-w-sm font-light"
+          >
+            Maquillaje y skincare de marcas originales con envíos a todo Costa Rica.
+          </motion.p>
+
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.44, duration: 0.5 }}
+            className="flex flex-col sm:flex-row items-center gap-3 mb-9"
+          >
+            <a
+              href="https://wa.me/50688045100"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 font-bold text-sm sm:text-base px-8 py-4 rounded-full text-white transition-all duration-300 hover:scale-[1.04] hover:brightness-110 active:scale-[0.97]"
+              style={{
+                background: 'linear-gradient(135deg, #25D366 0%, #1aad52 100%)',
+                boxShadow: '0 4px 28px rgba(37,211,102,0.38)',
+              }}
+            >
+              <WaIcon /> Comprar ahora
+            </a>
+            <button
+              onClick={() => onCatSelect(null)}
+              className="group inline-flex items-center gap-2 font-semibold text-sm sm:text-base px-8 py-4 rounded-full text-white border border-white/20 hover:border-rose-400/55 transition-all duration-300 hover:scale-[1.04] active:scale-[0.97]"
+              style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(14px)' }}
+            >
+              Ver catálogo
+              <span className="group-hover:translate-x-1.5 transition-transform duration-300">→</span>
+            </button>
+          </motion.div>
+
+          {/* Trust line — editorial, rose palette */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.58, duration: 0.5 }}
+            className="flex items-center justify-center gap-3"
+          >
+            <div className="w-7 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(184,95,114,0.35))' }} />
+            <div className="flex items-center divide-x divide-rose-500/20">
+              {TRUST_ITEMS.map((text) => (
+                <span key={text} className="text-[10px] font-medium text-white/38 uppercase tracking-[0.22em] px-3.5 whitespace-nowrap">
+                  {text}
+                </span>
+              ))}
+            </div>
+            <div className="w-7 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(184,95,114,0.35))' }} />
+          </motion.div>
+        </motion.div>
       </div>
 
+      {/* Bottom — stats row */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.75, duration: 0.5 }}
+        className="relative z-10 px-6 sm:px-10 pb-8 flex items-center gap-5 sm:gap-8"
+      >
+        <div>
+          <p className="text-xl sm:text-2xl font-bold text-white leading-none tabular-nums">
+            <CountNum to={700} duration={1.8} delay={1} />+
+          </p>
+          <p className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">Clientas</p>
+        </div>
+        <div className="w-px h-8 bg-rose-500/25" />
+        <div>
+          <p className="text-xl sm:text-2xl font-bold text-white leading-none tabular-nums">
+            <CountNum to={50} duration={1.5} delay={1.1} />+
+          </p>
+          <p className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">Marcas</p>
+        </div>
+        <div className="w-px h-8 bg-rose-500/25" />
+        <div>
+          <p className="text-xl sm:text-2xl font-bold text-white leading-none">CR</p>
+          <p className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">Todo el país</p>
+        </div>
+      </motion.div>
+
       {/* Scroll indicator */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5 pointer-events-none">
-        <p className="text-white/35 text-[10px] uppercase tracking-[0.25em]">scroll</p>
+      <div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-10 pointer-events-none hidden sm:flex flex-col items-center gap-1.5">
+        <p className="text-white/22 text-[9px] uppercase tracking-[0.28em]">scroll</p>
         <motion.div
-          className="w-px h-7 rounded-full bg-white/40"
-          animate={{ scaleY: [0.6, 1, 0.6], opacity: [0.3, 0.8, 0.3] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+          className="w-px rounded-full"
+          style={{ height: 26, background: 'linear-gradient(to bottom, rgba(184,95,114,0.65), transparent)' }}
+          animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.35, 0.85, 0.35] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
     </section>
@@ -373,43 +289,74 @@ function BrandMarquee() {
   );
 }
 
-/* ─── Category stories row ─── */
+/* ─── Category cards — premium grid ─── */
 function CategoryRow({ onCatSelect }) {
   return (
-    <section className="py-10 sm:py-14 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+    <section className="py-16 sm:py-24 bg-cream-50 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.55 }}>
+          transition={{ duration: 0.55 }}
+          className="text-center mb-10 sm:mb-14"
+        >
           <span className="section-label">Categorías</span>
-          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-tight animated-underline">
+          <h2 className="font-display text-3xl sm:text-4xl font-semibold text-ink-900 leading-tight">
             ¿Qué buscás hoy?
           </h2>
+          <div className="h-px w-10 mx-auto mt-3 rounded-full"
+            style={{ background: 'linear-gradient(90deg, #C9A875, #B85F72)' }} />
         </motion.div>
-      </div>
-      <div className="overflow-x-auto scrollbar-hide">
-        <div className="flex items-start gap-5 sm:gap-8 px-4 sm:px-6 lg:px-8 pb-2 w-max sm:w-full sm:justify-center mx-auto">
+
+        {/* Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {CATEGORIES.map((c, i) => (
             <motion.button
               key={c.cat}
               onClick={() => onCatSelect(c.cat)}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.5, ease: [0.3, 1, 0.3, 1] }}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
-              className="group flex flex-col items-center gap-3 flex-shrink-0 w-20 sm:w-26">
-              <div className="relative w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-rose-400 group-hover:ring-offset-3 transition-all duration-300 shadow-md group-hover:shadow-lg">
-                <img src={c.img} alt={c.label} className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-500" loading="lazy" />
-                <div className="absolute inset-0 bg-gradient-to-t from-ink-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <span className="text-white text-[10px] font-bold tracking-wide">Ver →</span>
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ delay: i * 0.07, duration: 0.55, ease: [0.25, 1, 0.25, 1] }}
+              className="group relative overflow-hidden rounded-2xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2 text-left"
+              style={{ aspectRatio: '3/4' }}
+            >
+              {/* Image */}
+              <img
+                src={c.img}
+                alt={c.label}
+                className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
+                loading="lazy"
+              />
+
+              {/* Base dark gradient */}
+              <div className="absolute inset-0 transition-opacity duration-500"
+                style={{ background: 'linear-gradient(to top, rgba(12,8,10,0.9) 0%, rgba(12,8,10,0.18) 55%, rgba(12,8,10,0.04) 100%)' }}
+              />
+
+              {/* Hover rose overlay */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
+                style={{ background: 'linear-gradient(to top, rgba(184,95,114,0.58) 0%, rgba(12,8,10,0.28) 65%, transparent 100%)' }}
+              />
+
+              {/* Top accent line — slides in on hover */}
+              <div className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500"
+                style={{ background: 'linear-gradient(90deg, #C9A875, #B85F72)' }}
+              />
+
+              {/* Label panel */}
+              <div className="absolute inset-x-0 bottom-0 p-4 translate-y-1 group-hover:translate-y-0 transition-transform duration-400 ease-out">
+                <p className="font-display text-white font-semibold text-sm sm:text-base leading-tight mb-1.5"
+                  style={{ textShadow: '0 1px 10px rgba(0,0,0,0.6)' }}>
+                  {c.label}
+                </p>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
+                  <span className="text-[10px] text-white/75 font-medium tracking-widest uppercase">Explorar</span>
+                  <span className="text-white/75 text-xs group-hover:translate-x-0.5 transition-transform duration-300">→</span>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-ink-600 group-hover:text-rose-500 transition-colors text-center leading-tight">{c.label}</span>
             </motion.button>
           ))}
         </div>
