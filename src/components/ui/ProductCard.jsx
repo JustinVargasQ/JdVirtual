@@ -109,14 +109,27 @@ export default function ProductCard({ product, index = 0 }) {
           </h3>
 
           {/* Stars */}
-          {product.reviews > 0 && (
-            <div className="flex items-center gap-1 mb-2.5">
-              <div className="flex gap-0.5">
-                {[1,2,3,4,5].map((s) => <StarIcon key={s} filled={s <= Math.round(product.rating)} />)}
-              </div>
-              <span className="text-[11px] text-ink-400">({product.reviews})</span>
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex gap-0.5">
+              {[1,2,3,4,5].map((s) => <StarIcon key={s} filled={s <= Math.round(product.rating || 5)} />)}
             </div>
-          )}
+            {product.reviews > 0 && (
+              <span className="text-[11px] text-ink-400">({product.reviews})</span>
+            )}
+          </div>
+
+          {/* Urgency / social proof */}
+          {product.stock !== undefined && product.stock > 0 && product.stock <= 5 ? (
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+              <span className="text-[11px] font-semibold text-amber-600">¡Solo quedan {product.stock}!</span>
+            </div>
+          ) : product.reviews >= 30 ? (
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-[10px]">🔥</span>
+              <span className="text-[11px] font-semibold text-rose-500">Muy buscado</span>
+            </div>
+          ) : null}
 
           {/* Price */}
           <div className="flex items-baseline gap-2">

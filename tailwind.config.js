@@ -52,6 +52,10 @@ export default {
           '0%':   { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
         },
+        'marquee-reverse': {
+          '0%':   { transform: 'translateX(-50%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%':      { transform: 'translateY(-14px)' },
@@ -73,7 +77,8 @@ export default {
         'fade-up':   'fade-up 0.6s cubic-bezier(.3,1,.3,1) both',
         'fade-in':   'fade-in 0.5s ease both',
         'shimmer':   'shimmer 2s linear infinite',
-        'marquee':   'marquee 30s linear infinite',
+        'marquee':         'marquee 30s linear infinite',
+        'marquee-reverse': 'marquee-reverse 38s linear infinite',
         'float':     'float 4s ease-in-out infinite',
         'orb-pulse': 'orb-pulse 5s ease-in-out infinite',
         'breathe':   'breathe 3s ease-in-out infinite',

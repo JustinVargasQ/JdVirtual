@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 
 export default function AdminLogin() {
-  const [form, setForm] = useState({ email: 'admin@jdvirtual.com', password: '' });
+  const [form, setForm]   = useState({ email: 'admin@jdvirtual.com', password: '' });
+  const [show, setShow]   = useState(false);
   const { login, error, loading } = useAuthStore();
   const navigate = useNavigate();
 
@@ -13,46 +14,110 @@ export default function AdminLogin() {
     if (ok) navigate('/admin');
   };
 
-  const inputCls = 'w-full border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 transition-colors bg-white';
-
   return (
-    <div className="min-h-screen bg-cream-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <p className="font-display text-3xl font-semibold text-ink-900">
-            JD <span className="text-rose-500">Admin</span>
+    <div className="min-h-screen flex">
+
+      {/* Left — brand panel (desktop only) */}
+      <div className="hidden lg:flex w-1/2 bg-ink-900 flex-col items-center justify-center relative overflow-hidden p-14">
+        {/* Ambient orbs */}
+        <div className="absolute -top-24 -left-16 w-80 h-80 rounded-full bg-rose-500/15 blur-3xl" />
+        <div className="absolute -bottom-16 right-0 w-64 h-64 rounded-full bg-rose-400/10 blur-3xl" />
+        {/* Sparkle dots */}
+        {[{x:'12%',y:'22%'},{x:'85%',y:'18%'},{x:'75%',y:'75%'},{x:'20%',y:'78%'}].map((p,i)=>(
+          <div key={i} className="absolute w-1 h-1 rounded-full bg-rose-400/50"
+            style={{ left:p.x, top:p.y }} />
+        ))}
+        <div className="relative z-10 text-center">
+          <p className="font-display text-5xl font-bold text-white mb-2">
+            JD <span className="text-rose-400">Virtual</span>
           </p>
-          <p className="text-ink-400 text-sm mt-2">Panel de administración</p>
+          <p className="text-white/40 text-sm tracking-[0.22em] uppercase mb-10">Panel de administración</p>
+          <div className="w-16 h-px bg-rose-500/40 mx-auto mb-10" />
+          <div className="space-y-4">
+            {[
+              { icon: '📦', text: 'Gestión de productos' },
+              { icon: '📋', text: 'Control de órdenes' },
+              { icon: '⚙️', text: 'Configuración del sitio' },
+            ].map((f) => (
+              <div key={f.text} className="flex items-center gap-3 text-left">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+                  style={{ background: 'rgba(184,95,114,0.15)' }}>
+                  {f.icon}
+                </div>
+                <p className="text-white/60 text-sm">{f.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl2 shadow-card p-8 space-y-5">
-          <div>
-            <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Email</label>
-            <input type="email" required value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="admin@jdvirtual.com" className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Contraseña</label>
-            <input type="password" required value={form.password}
-              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-              placeholder="••••••••" className={inputCls} />
+      {/* Right — form */}
+      <div className="flex-1 flex items-center justify-center bg-cream-50 px-4 py-12">
+        <div className="w-full max-w-sm">
+
+          {/* Mobile logo */}
+          <div className="lg:hidden text-center mb-8">
+            <p className="font-display text-3xl font-semibold text-ink-900">
+              JD <span className="text-rose-500">Admin</span>
+            </p>
+            <p className="text-ink-400 text-sm mt-1">Panel de administración</p>
           </div>
 
-          {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm rounded-xl px-4 py-3">
-              {error}
+          {/* Desktop heading */}
+          <div className="hidden lg:block mb-8">
+            <h1 className="font-display text-2xl font-semibold text-ink-900">Bienvenida de vuelta</h1>
+            <p className="text-ink-400 text-sm mt-1">Ingresá para continuar</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-card p-7 space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-ink-500 uppercase tracking-widest mb-2">Email</label>
+              <input
+                type="email" required value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="admin@jdvirtual.com"
+                className="w-full border border-cream-200 rounded-xl px-4 py-3 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white"
+              />
             </div>
-          )}
 
-          <button type="submit" disabled={loading}
-            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl transition-colors shadow-btn">
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
-          <p className="text-center text-xs text-ink-400 pt-1">
-            Demo: admin@jdvirtual.com / jd2024
+            <div>
+              <label className="block text-xs font-bold text-ink-500 uppercase tracking-widest mb-2">Contraseña</label>
+              <div className="relative">
+                <input
+                  type={show ? 'text' : 'password'} required value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="••••••••"
+                  className="w-full border border-cream-200 rounded-xl px-4 py-3 pr-11 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white"
+                />
+                <button type="button" onClick={() => setShow(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-300 hover:text-ink-600 transition-colors">
+                  {show
+                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  }
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading}
+              className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-colors shadow-btn flex items-center justify-center gap-2">
+              {loading
+                ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Ingresando...</>
+                : 'Ingresar'}
+            </button>
+          </form>
+
+          <p className="text-center text-xs text-ink-400 mt-5">
+            Demo: <span className="text-ink-600 font-medium">admin@jdvirtual.com</span> / <span className="text-ink-600 font-medium">jd2024</span>
           </p>
-        </form>
+        </div>
       </div>
     </div>
   );

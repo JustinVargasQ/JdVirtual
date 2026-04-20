@@ -3,94 +3,179 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import { PRODUCTS } from '../../data/products';
 
+/* ── Icons ── */
+const DashIcon    = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
+const ProductIcon = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>;
+const OrderIcon   = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>;
+const ConfigIcon  = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+const MenuIcon    = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>;
+const CloseIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>;
+const LogoutIcon  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+const StoreIcon   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+
 const NAV = [
-  { to: '/admin',           label: 'Dashboard',     icon: <DashIcon />,   exact: true },
-  { to: '/admin/productos', label: 'Productos',      icon: <ProductIcon /> },
-  { to: '/admin/ordenes',   label: 'Órdenes',        icon: <OrderIcon />   },
-  { to: '/admin/config',    label: 'Configuración',  icon: <ConfigIcon />  },
+  { to: '/admin',           label: 'Dashboard',    icon: <DashIcon />,    exact: true },
+  { to: '/admin/productos', label: 'Productos',     icon: <ProductIcon />              },
+  { to: '/admin/ordenes',   label: 'Órdenes',       icon: <OrderIcon />                },
+  { to: '/admin/config',    label: 'Configuración', icon: <ConfigIcon />               },
 ];
 
-/* ── icons ── */
-function DashIcon()    { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>; }
-function ProductIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>; }
-function OrderIcon()   { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>; }
-function ConfigIcon()  { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>; }
-function MenuIcon()    { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>; }
-function CloseIcon()   { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>; }
-function LogoutIcon()  { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>; }
+const PAGE_TITLES = {
+  '/admin':            'Dashboard',
+  '/admin/productos':  'Productos',
+  '/admin/ordenes':    'Órdenes',
+  '/admin/config':     'Configuración',
+};
 
-function StatCard({ label, value, sub, color = 'rose' }) {
-  const colors = { rose: 'text-rose-500', green: 'text-green-500', gold: 'text-gold', blue: 'text-blue-500' };
+/* ── Stat card ── */
+function StatCard({ icon, label, value, sub, accent = '#B85F72', bg = '#FBF0F2' }) {
   return (
-    <div className="bg-white rounded-xl2 p-5 shadow-card">
-      <p className="text-xs font-semibold text-ink-400 uppercase tracking-widest mb-2">{label}</p>
-      <p className={`font-display text-2xl sm:text-3xl font-bold ${colors[color]}`}>{value}</p>
-      {sub && <p className="text-xs text-ink-400 mt-1">{sub}</p>}
+    <div className="bg-white rounded-2xl p-5 shadow-card border border-cream-100 flex items-start gap-4">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+        style={{ background: bg }}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold text-ink-400 uppercase tracking-widest mb-1">{label}</p>
+        <p className="font-display text-2xl font-bold leading-none" style={{ color: accent }}>{value}</p>
+        {sub && <p className="text-[11px] text-ink-400 mt-1">{sub}</p>}
+      </div>
     </div>
   );
 }
 
-function DashboardHome() {
-  return (
-    <div>
-      <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 mb-6">Bienvenida 👋</h1>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
-        <StatCard label="Productos activos" value={PRODUCTS.length} sub="En catálogo" color="rose" />
-        <StatCard label="Pedidos hoy" value="—" sub="Conecta el backend" color="green" />
-        <StatCard label="Ventas semana" value="—" sub="Conecta el backend" color="gold" />
-        <StatCard label="Visitas" value="—" sub="Google Analytics" color="blue" />
+/* ── Quick action card ── */
+function QuickCard({ icon, label, sub, to, href, bg = 'bg-rose-50', hover = 'hover:bg-rose-100' }) {
+  const cls = `flex items-center gap-3 p-4 ${bg} ${hover} rounded-xl transition-colors group`;
+  const inner = (
+    <>
+      <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center text-xl flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+        {icon}
       </div>
-      <div className="bg-white rounded-xl2 shadow-card p-5 sm:p-6">
-        <h2 className="font-semibold text-ink-900 mb-4">Accesos rápidos</h2>
+      <div>
+        <p className="font-semibold text-ink-900 text-sm">{label}</p>
+        <p className="text-xs text-ink-400 mt-0.5">{sub}</p>
+      </div>
+    </>
+  );
+  if (href) return <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>{inner}</a>;
+  return <Link to={to} className={cls}>{inner}</Link>;
+}
+
+/* ── Dashboard home page ── */
+function DashboardHome({ adminName }) {
+  const hour     = new Date().getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
+  const today    = new Date().toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  return (
+    <div className="space-y-6">
+      {/* Greeting */}
+      <div className="bg-ink-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
+        <div className="pointer-events-none absolute -top-8 -right-8 w-48 h-48 rounded-full bg-rose-500/15 blur-3xl" />
+        <div className="relative z-10">
+          <p className="text-white/50 text-sm mb-1">{greeting} ✨</p>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-white">
+            {adminName ? `Hola, ${adminName.split(' ')[0]}!` : '¡Bienvenida!'}
+          </h1>
+          <p className="text-white/35 text-xs mt-1 capitalize">{today}</p>
+        </div>
+        <div className="relative z-10 flex items-center gap-2 bg-white/8 border border-white/10 rounded-xl px-4 py-2.5 w-fit">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-white/70 text-xs font-medium">Tienda activa</span>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard icon="📦" label="Productos" value={PRODUCTS.length} sub="En catálogo" accent="#B85F72" bg="#FBF0F2" />
+        <StatCard icon="🛍️" label="Pedidos hoy"    value="—" sub="Requiere backend" accent="#3B82F6" bg="#EFF6FF" />
+        <StatCard icon="💰" label="Ventas semana"  value="—" sub="Requiere backend" accent="#16A34A" bg="#F0FDF4" />
+        <StatCard icon="👁️" label="Visitas"         value="—" sub="Google Analytics" accent="#D97706" bg="#FFFBEB" />
+      </div>
+
+      {/* Quick access */}
+      <div className="bg-white rounded-2xl shadow-card border border-cream-100 p-5 sm:p-6">
+        <p className="text-xs font-bold text-ink-400 uppercase tracking-widest mb-4">Accesos rápidos</p>
         <div className="grid sm:grid-cols-3 gap-3">
-          <Link to="/admin/productos/nuevo"
-            className="flex items-center gap-3 p-4 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors">
-            <span className="text-xl flex-shrink-0">➕</span>
-            <div><p className="font-semibold text-ink-900 text-sm">Nuevo producto</p><p className="text-xs text-ink-400">Agregar al catálogo</p></div>
-          </Link>
-          <a href="/" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-3 p-4 bg-cream-100 hover:bg-cream-200 rounded-xl transition-colors">
-            <span className="text-xl flex-shrink-0">🌐</span>
-            <div><p className="font-semibold text-ink-900 text-sm">Ver tienda</p><p className="text-xs text-ink-400">Abrir sitio público</p></div>
-          </a>
-          <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors">
-            <span className="text-xl flex-shrink-0">💬</span>
-            <div><p className="font-semibold text-ink-900 text-sm">WhatsApp</p><p className="text-xs text-ink-400">Atender pedidos</p></div>
-          </a>
+          <QuickCard icon="➕" label="Nuevo producto"  sub="Agregar al catálogo" to="/admin/productos/nuevo" bg="bg-rose-50"  hover="hover:bg-rose-100" />
+          <QuickCard icon="🌐" label="Ver tienda"       sub="Abrir sitio público"  href="/" bg="bg-cream-50" hover="hover:bg-cream-100" />
+          <QuickCard icon="💬" label="WhatsApp"         sub="Atender pedidos"       href="https://wa.me/50688045100" bg="bg-green-50" hover="hover:bg-green-100" />
+        </div>
+      </div>
+
+      {/* Tips card */}
+      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-5 flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-xl flex-shrink-0">💡</div>
+        <div>
+          <p className="font-semibold text-ink-900 text-sm mb-1">Tip del día</p>
+          <p className="text-ink-500 text-sm leading-relaxed">
+            Mantené las fotos de tus productos con buena iluminación y fondo claro. Los productos con imágenes de calidad convierten hasta un 40% más.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Sidebar content — shared between desktop & mobile drawer ── */
+/* ── Sidebar nav content ── */
 function SidebarContent({ location, onNavigate, onLogout, adminName }) {
+  const initials = adminName
+    ? adminName.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase()
+    : 'JD';
+
   return (
-    <>
-      <div className="p-5 border-b border-ink-700 flex-shrink-0">
-        <p className="font-display text-xl text-white font-semibold">JD <span className="text-rose-400">Admin</span></p>
-        {adminName && <p className="text-ink-400 text-xs mt-1 truncate">{adminName}</p>}
+    <div className="flex flex-col h-full">
+      {/* Brand */}
+      <div className="p-5 flex-shrink-0">
+        <p className="font-display text-xl font-bold text-white">
+          JD <span className="text-rose-400">Admin</span>
+        </p>
+        <p className="text-white/30 text-[11px] mt-0.5 uppercase tracking-widest">Panel de control</p>
       </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+
+      <div className="h-px bg-white/6 mx-4 flex-shrink-0" />
+
+      {/* Nav */}
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto mt-2">
         {NAV.map((item) => {
-          const active = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
+          const active = item.exact
+            ? location.pathname === item.to
+            : location.pathname.startsWith(item.to);
           return (
             <Link key={item.to} to={item.to} onClick={onNavigate}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${active ? 'bg-rose-500 text-white' : 'text-ink-300 hover:bg-ink-700 hover:text-white'}`}>
-              <span className="flex-shrink-0">{item.icon}</span>
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                active
+                  ? 'bg-rose-500 text-white shadow-btn'
+                  : 'text-white/50 hover:bg-white/6 hover:text-white'
+              }`}>
+              <span className="flex-shrink-0 opacity-90">{item.icon}</span>
               {item.label}
+              {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/60" />}
             </Link>
           );
         })}
       </nav>
-      <div className="p-3 border-t border-ink-700 flex-shrink-0">
+
+      {/* Bottom: view store + user + logout */}
+      <div className="p-3 flex-shrink-0 space-y-1">
+        <a href="/" target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-white/40 hover:bg-white/6 hover:text-white transition-all">
+          <StoreIcon /> Ver tienda
+        </a>
+        <div className="h-px bg-white/6 my-1" />
+        <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl">
+          <div className="w-7 h-7 rounded-full bg-rose-500 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+            {initials}
+          </div>
+          <p className="text-white/60 text-xs truncate flex-1">{adminName || 'Administrador'}</p>
+        </div>
         <button onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-ink-400 hover:bg-ink-700 hover:text-white transition-colors">
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-white/40 hover:bg-red-500/15 hover:text-red-400 transition-all">
           <LogoutIcon /> Cerrar sesión
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -102,29 +187,29 @@ export default function AdminDashboard() {
 
   const handleLogout = () => { logout(); navigate('/admin/login'); };
   const isDashboardHome = location.pathname === '/admin';
+  const pageTitle = Object.entries(PAGE_TITLES).find(([path]) =>
+    path === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(path)
+  )?.[1] ?? 'Admin';
 
   return (
-    <div className="min-h-screen bg-cream-50 flex">
+    <div className="min-h-screen bg-[#F4F0EF] flex">
 
-      {/* ── Desktop sidebar ── */}
-      <aside className="hidden lg:flex w-60 bg-ink-900 flex-shrink-0 flex-col fixed h-full z-20">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-56 xl:w-60 bg-ink-900 flex-shrink-0 flex-col fixed h-full z-20">
         <SidebarContent location={location} onLogout={handleLogout} adminName={admin?.name} />
       </aside>
 
-      {/* ── Mobile overlay ── */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-ink-900/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Mobile drawer ── */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-ink-900 flex flex-col transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-ink-700">
-          <p className="font-display text-lg text-white font-semibold">JD <span className="text-rose-400">Admin</span></p>
-          <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-ink-400 hover:text-white transition-colors">
+      {/* Mobile drawer */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-60 bg-ink-900 flex-col transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'flex translate-x-0' : 'hidden -translate-x-full'}`}>
+        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0">
+          <p className="font-display text-xl font-bold text-white">JD <span className="text-rose-400">Admin</span></p>
+          <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-white/40 hover:text-white transition-colors">
             <CloseIcon />
           </button>
         </div>
@@ -136,19 +221,29 @@ export default function AdminDashboard() {
         />
       </aside>
 
-      {/* ── Main content ── */}
-      <div className="flex-1 lg:ml-60 flex flex-col min-h-screen">
+      {/* Main content */}
+      <div className="flex-1 lg:ml-56 xl:ml-60 flex flex-col min-h-screen">
 
-        {/* Mobile top bar */}
-        <header className="lg:hidden flex items-center gap-3 bg-ink-900 px-4 py-3 sticky top-0 z-20">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 text-ink-300 hover:text-white transition-colors">
+        {/* Top bar */}
+        <header className="bg-white border-b border-cream-200 px-4 sm:px-6 py-4 flex items-center gap-4 sticky top-0 z-20">
+          <button onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-1.5 text-ink-400 hover:text-ink-900 transition-colors">
             <MenuIcon />
           </button>
-          <p className="font-display text-lg text-white font-semibold">JD <span className="text-rose-400">Admin</span></p>
+          <div className="flex-1">
+            <h2 className="font-display font-semibold text-ink-900 text-base sm:text-lg leading-none">{pageTitle}</h2>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-ink-400">
+            <span className="w-2 h-2 rounded-full bg-green-400" />
+            Tienda activa
+          </div>
+          <div className="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center text-white text-[11px] font-bold">
+            {admin?.name?.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'JD'}
+          </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          {isDashboardHome ? <DashboardHome /> : <Outlet />}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {isDashboardHome ? <DashboardHome adminName={admin?.name} /> : <Outlet />}
         </main>
       </div>
     </div>

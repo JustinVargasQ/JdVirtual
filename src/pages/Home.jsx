@@ -1,10 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate, useInView } from 'framer-motion';
 import ProductCard from '../components/ui/ProductCard';
 import FilterBar from '../components/ui/FilterBar';
 import { useProducts, useFeatured, useCategoryPreviews } from '../hooks/useProducts';
 
+/* ─── Slide config ─── */
+const SLIDE_CONFIG = [
+  {
+    eyebrow: 'Nuevos ingresos',
+    title:   'Tu nueva\nobsesión',
+    sub:     'Maquillaje y skincare de marcas originales con envíos a todo Costa Rica.',
+    cta:     'Ver catálogo',
+    cat:     null,
+  },
+  {
+    eyebrow: 'Skincare coreano',
+    title:   'Cuida tu\npiel hoy',
+    sub:     'Productos auténticos con resultados reales para tu rutina diaria.',
+    cta:     'Ver skincare',
+    cat:     'skincare',
+  },
+  {
+    eyebrow: 'Maquillaje 2025',
+    title:   'Brilla con\ntu estilo',
+    sub:     'Las marcas que amas al mejor precio en Costa Rica.',
+    cta:     'Ver maquillaje',
+    cat:     'maquillaje',
+  },
+];
+
+const ChevronIcon = ({ dir }) => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    {dir === 'left' ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
+  </svg>
+);
 
 const CATEGORIES = [
   { label: 'Skin care',  cat: 'skincare',   img: '/imgs/Skincare.jpeg'   },
@@ -38,7 +68,7 @@ const BoxIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none
 const ZapIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 const HandshakeIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/><path d="m9 12 2 2 4-4"/></svg>;
 
-/* ─── Animated count-up number ─── */
+/* ─── Animated count-up (for hero, starts on mount) ─── */
 function CountNum({ to, duration = 1.8, delay = 0.5 }) {
   const count = useMotionValue(0);
   const rounded = useTransform(count, Math.round);
@@ -49,243 +79,572 @@ function CountNum({ to, duration = 1.8, delay = 0.5 }) {
   return <motion.span>{rounded}</motion.span>;
 }
 
-/* ─── Hero — Static premium ─── */
+/* ─── Count-up triggered when scrolled into view ─── */
+function CountNumView({ to, duration = 2 }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, Math.round);
+  useEffect(() => {
+    if (!inView) return;
+    const ctrl = animate(count, to, { duration, ease: 'easeOut' });
+    return ctrl.stop;
+  }, [inView]);
+  return <motion.span ref={ref}>{rounded}</motion.span>;
+}
+
+/* ─── Sparkle particles (imagen side) ─── */
+const SPARKLES = [
+  { x:'8%',  y:'75%', s:4, d:'0s',   t:'3.3s' },
+  { x:'18%', y:'55%', s:3, d:'0.9s', t:'2.8s' },
+  { x:'30%', y:'80%', s:5, d:'1.5s', t:'3.7s' },
+  { x:'48%', y:'65%', s:3, d:'0.3s', t:'2.6s' },
+  { x:'60%', y:'78%', s:4, d:'2.0s', t:'3.2s' },
+  { x:'72%', y:'50%', s:3, d:'1.1s', t:'2.9s' },
+  { x:'82%', y:'72%', s:4, d:'0.6s', t:'3.5s' },
+  { x:'90%', y:'40%', s:3, d:'1.8s', t:'2.7s' },
+];
+
+function SparkleLayer() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden z-10">
+      {SPARKLES.map((s, i) => (
+        <div key={i} className="absolute rounded-full bg-white/70"
+          style={{ left:s.x, top:s.y, width:s.s, height:s.s,
+            animationName:'sparkle-float', animationDuration:s.t,
+            animationDelay:s.d, animationTimingFunction:'ease-out',
+            animationIterationCount:'infinite' }} />
+      ))}
+      {[{ x:'20%',y:'28%',t:'4.5s',d:'1.2s' },{ x:'65%',y:'22%',t:'5.0s',d:'2.6s' }].map((s,i)=>(
+        <div key={`st-${i}`} className="absolute text-white/50 text-xs select-none"
+          style={{ left:s.x, top:s.y,
+            animationName:'sparkle-float', animationDuration:s.t,
+            animationDelay:s.d, animationTimingFunction:'ease-out',
+            animationIterationCount:'infinite' }}>✦</div>
+      ))}
+    </div>
+  );
+}
+
+function HeroVideoPanel({ className = '', style }) {
+  return (
+    <div className={`relative overflow-hidden ${className}`} style={style}>
+      {/* Video — slight zoom for premium feel */}
+      <video
+        src="/videos/hero.mp4"
+        autoPlay muted loop playsInline
+        className="absolute inset-0 w-full h-full object-cover object-center scale-[1.03] transition-transform duration-[8000ms]"
+      />
+
+      {/* Top vignette */}
+      <div className="absolute inset-x-0 top-0 h-36 pointer-events-none z-10"
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.22), transparent)' }} />
+
+      {/* Bottom cinematic fade — strong, branded */}
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none z-10"
+        style={{ height: '55%', background: 'linear-gradient(to top, rgba(15,9,11,0.82) 0%, rgba(26,14,20,0.45) 40%, transparent 100%)' }} />
+
+      {/* Left blend into white text panel (desktop only) */}
+      <div className="absolute inset-y-0 left-0 w-40 hidden md:block pointer-events-none z-10"
+        style={{ background: 'linear-gradient(to right, #fff 0%, rgba(255,255,255,0.85) 35%, rgba(255,255,255,0.3) 70%, transparent 100%)' }} />
+
+      {/* Subtle rose brand tint on the right side */}
+      <div className="absolute inset-0 pointer-events-none z-10"
+        style={{ background: 'radial-gradient(ellipse 70% 50% at 85% 15%, rgba(184,95,114,0.18) 0%, transparent 70%)' }} />
+
+      {/* Sparkles */}
+      <SparkleLayer />
+
+      {/* Bottom overlay row */}
+      <div className="absolute inset-x-0 bottom-0 z-20 px-5 py-5 sm:px-8 sm:py-7 flex items-end justify-between">
+
+        {/* Left: store label */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8, duration: 0.7, ease: [0.3,1,0.3,1] }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+            <span className="text-white/55 text-[10px] font-bold uppercase tracking-[0.22em]">Nuestro TikTok</span>
+          </div>
+          <p className="text-white font-display font-bold text-lg leading-tight drop-shadow-lg"
+            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
+            JD Virtual Store
+          </p>
+        </motion.div>
+
+        {/* Right: TikTok pill */}
+        <motion.a
+          href="https://www.tiktok.com/@jd_virtual_store"
+          target="_blank" rel="noopener noreferrer"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 1.0, duration: 0.5, type: 'spring', stiffness: 300, damping: 24 }}
+          whileHover={{ scale: 1.06, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full"
+          style={{
+            background: 'rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.2)',
+          }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/>
+          </svg>
+          <span className="text-white text-[11px] font-bold tracking-wider">@jd_virtual_store</span>
+        </motion.a>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Hero — split layout with TikTok video ─── */
 function Hero({ onCatSelect }) {
-  const mouseX = useMotionValue(0.5);
-  const mouseY = useMotionValue(0.5);
-  const parallaxX = useTransform(mouseX, [0, 1], ['1.5%', '-1.5%']);
-  const parallaxY = useTransform(mouseY, [0, 1], ['1%', '-1%']);
+  const [current, setCurrent] = useState(0);
+  const [paused,  setPaused]  = useState(false);
 
-  const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    mouseX.set((e.clientX - rect.left) / rect.width);
-    mouseY.set((e.clientY - rect.top) / rect.height);
-  };
+  const total = SLIDE_CONFIG.length;
+  const slide = SLIDE_CONFIG[current];
 
-  const TRUST_ITEMS = ['Envíos a todo CR', 'Marcas originales', 'Pago con SINPE'];
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setCurrent((c) => (c + 1) % total), 5500);
+    return () => clearInterval(t);
+  }, [paused, total]);
+
+  const prev = () => { setPaused(true); setCurrent((c) => (c - 1 + total) % total); };
+  const next = () => { setPaused(true); setCurrent((c) => (c + 1) % total); };
 
   return (
-    <section
-      className="relative flex flex-col overflow-hidden"
-      style={{ minHeight: '100svh' }}
-      onMouseMove={handleMouseMove}
-    >
-      {/* Background — static + Ken Burns + parallax */}
-      <motion.div className="absolute inset-0" style={{ x: parallaxX, y: parallaxY }}>
-        <motion.img
-          src="/imgs/makeup.jpg"
-          alt="JD Virtual Store — Maquillaje y Skincare"
-          className="w-full h-full object-cover object-center"
-          style={{ minHeight: '108svh' }}
-          initial={{ scale: 1.08 }}
-          animate={{ scale: 1.04 }}
-          transition={{ duration: 9, ease: 'linear' }}
-        />
-      </motion.div>
+    <section className="relative overflow-hidden bg-white" style={{ minHeight: '88vh' }}>
 
-      {/* Overlay — cinematic dark gradient */}
-      <div className="absolute inset-0 z-[1] pointer-events-none"
-        style={{ background: 'linear-gradient(180deg, rgba(10,6,8,0.62) 0%, rgba(10,6,8,0.38) 28%, rgba(10,6,8,0.50) 52%, rgba(10,6,8,0.82) 80%, rgba(10,6,8,0.97) 100%)' }}
-      />
-      <div className="absolute inset-0 z-[1] pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 115% 105% at 50% 50%, transparent 28%, rgba(6,3,5,0.62) 100%)' }}
-      />
+      {/* ─ MOBILE: TikTok top, text below ─ */}
+      <div className="md:hidden flex flex-col bg-white" style={{ minHeight: '88vh' }}>
 
-      {/* Ambient rose glows */}
-      <div className="pointer-events-none absolute top-1/4 right-[8%] w-[30rem] h-[30rem] rounded-full blur-[90px] z-[1]"
-        style={{ background: 'radial-gradient(circle, rgba(184,95,114,0.2) 0%, transparent 70%)' }} />
-      <div className="pointer-events-none absolute bottom-1/3 left-[4%] w-72 h-72 rounded-full blur-[70px] z-[1]"
-        style={{ background: 'radial-gradient(circle, rgba(184,95,114,0.25) 0%, transparent 70%)' }} />
+        {/* Hero video */}
+        <HeroVideoPanel className="flex-shrink-0" style={{ height: 'min(62vw, 360px)', minHeight: 260 }} />
 
-      {/* Main content — centered */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 sm:px-10 pt-28 pb-28">
-        <motion.div
-          className="flex flex-col items-center w-full max-w-3xl mx-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.7 }}
-        >
-          {/* Eyebrow — rose lines */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.5 }}
-            className="flex items-center gap-3 mb-8"
-          >
-            <div className="w-8 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(184,95,114,0.7))' }} />
-            <span className="text-[10px] font-semibold tracking-[0.35em] uppercase" style={{ color: 'rgba(209,125,141,0.85)' }}>
-              Colección 2025
-            </span>
-            <div className="w-8 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(184,95,114,0.7))' }} />
-          </motion.div>
+        {/* Mobile text */}
+        <div className="flex-1 flex flex-col justify-center px-6 pt-5 pb-10 bg-white">
+          <AnimatePresence mode="wait">
+            <motion.div key={`mt-${current}`}
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.5, ease: [0.3,1,0.3,1] }}>
 
-          {/* Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25, duration: 0.7, ease: [0.25, 1, 0.25, 1] }}
-            className="font-display font-bold leading-[0.95] tracking-tight text-white whitespace-pre-line mb-5"
-            style={{ fontSize: 'clamp(3.4rem, 11vw, 7rem)', textShadow: '0 2px 40px rgba(0,0,0,0.45)' }}
-          >
-            {'Tu nueva\nobsesión'}
-          </motion.h1>
+              <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.22em] uppercase text-rose-500 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                {slide.eyebrow}
+              </span>
 
-          {/* Rose accent bar */}
-          <motion.div
-            className="h-px rounded-full mb-6"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 44, opacity: 1 }}
-            transition={{ delay: 0.42, duration: 0.6, ease: [0.25, 1, 0.25, 1] }}
-            style={{ background: 'linear-gradient(90deg, transparent, #B85F72, transparent)' }}
-          />
+              <h1 className="font-display font-bold leading-[0.95] text-ink-900 whitespace-pre-line mb-4"
+                style={{ fontSize: 'clamp(2.6rem, 10vw, 4rem)' }}>
+                {slide.title}
+              </h1>
 
-          {/* Subtitle */}
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.34, duration: 0.6 }}
-            className="text-white/58 text-base sm:text-lg leading-relaxed mb-9 max-w-sm font-light"
-          >
-            Maquillaje y skincare de marcas originales con envíos a todo Costa Rica.
-          </motion.p>
+              <p className="text-ink-500 text-sm leading-relaxed mb-7 max-w-xs">{slide.sub}</p>
 
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.44, duration: 0.5 }}
-            className="flex flex-col sm:flex-row items-center gap-3 mb-9"
-          >
-            <a
-              href="https://wa.me/50688045100"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 font-bold text-sm sm:text-base px-8 py-4 rounded-full text-white transition-all duration-300 hover:scale-[1.04] hover:brightness-110 active:scale-[0.97]"
-              style={{
-                background: 'linear-gradient(135deg, #25D366 0%, #1aad52 100%)',
-                boxShadow: '0 4px 28px rgba(37,211,102,0.38)',
-              }}
-            >
-              <WaIcon /> Comprar ahora
-            </a>
-            <button
-              onClick={() => onCatSelect(null)}
-              className="group inline-flex items-center gap-2 font-semibold text-sm sm:text-base px-8 py-4 rounded-full text-white border border-white/20 hover:border-rose-400/55 transition-all duration-300 hover:scale-[1.04] active:scale-[0.97]"
-              style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(14px)' }}
-            >
-              Ver catálogo
-              <span className="group-hover:translate-x-1.5 transition-transform duration-300">→</span>
-            </button>
-          </motion.div>
+              <div className="flex flex-wrap gap-3 mb-8">
+                <motion.button onClick={() => onCatSelect(slide.cat)}
+                  whileTap={{ scale: 0.96 }}
+                  className="inline-flex items-center gap-2 bg-ink-900 hover:bg-rose-500 text-white font-semibold px-7 py-3.5 rounded-full transition-all duration-300 text-sm shadow-btn">
+                  {slide.cta} ♡
+                </motion.button>
+                <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#25D366] text-white font-semibold px-6 py-3.5 rounded-full transition-all duration-300 text-sm">
+                  <WaIcon /> Pedir
+                </a>
+              </div>
 
-          {/* Trust line — editorial, rose palette */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.58, duration: 0.5 }}
-            className="flex items-center justify-center gap-3"
-          >
-            <div className="w-7 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(184,95,114,0.35))' }} />
-            <div className="flex items-center divide-x divide-rose-500/20">
-              {TRUST_ITEMS.map((text) => (
-                <span key={text} className="text-[10px] font-medium text-white/38 uppercase tracking-[0.22em] px-3.5 whitespace-nowrap">
-                  {text}
-                </span>
-              ))}
-            </div>
-            <div className="w-7 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(184,95,114,0.35))' }} />
-          </motion.div>
-        </motion.div>
+              {/* Nav dots */}
+              <div className="flex items-center gap-3">
+                <button onClick={prev} className="w-8 h-8 rounded-full border border-ink-200 hover:border-rose-400 flex items-center justify-center text-ink-600 hover:text-rose-500 transition-all">
+                  <ChevronIcon dir="left" />
+                </button>
+                <div className="flex gap-1.5">
+                  {SLIDE_CONFIG.map((_, i) => (
+                    <button key={i} onClick={() => { setPaused(true); setCurrent(i); }}
+                      className={`rounded-full transition-all duration-300 ${i === current ? 'w-6 h-2 bg-ink-900' : 'w-2 h-2 bg-ink-200 hover:bg-ink-400'}`} />
+                  ))}
+                </div>
+                <button onClick={next} className="w-8 h-8 rounded-full border border-ink-200 hover:border-rose-400 flex items-center justify-center text-ink-600 hover:text-rose-500 transition-all">
+                  <ChevronIcon dir="right" />
+                </button>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Bottom — stats row */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.75, duration: 0.5 }}
-        className="relative z-10 px-6 sm:px-10 pb-8 flex items-center gap-5 sm:gap-8"
-      >
-        <div>
-          <p className="text-xl sm:text-2xl font-bold text-white leading-none tabular-nums">
-            <CountNum to={700} duration={1.8} delay={1} />+
-          </p>
-          <p className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">Clientas</p>
-        </div>
-        <div className="w-px h-8 bg-rose-500/25" />
-        <div>
-          <p className="text-xl sm:text-2xl font-bold text-white leading-none tabular-nums">
-            <CountNum to={50} duration={1.5} delay={1.1} />+
-          </p>
-          <p className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">Marcas</p>
-        </div>
-        <div className="w-px h-8 bg-rose-500/25" />
-        <div>
-          <p className="text-xl sm:text-2xl font-bold text-white leading-none">CR</p>
-          <p className="text-[10px] text-white/35 uppercase tracking-wider mt-0.5">Todo el país</p>
-        </div>
-      </motion.div>
+      {/* ─ DESKTOP: split layout ─ */}
+      <div className="hidden md:grid" style={{ gridTemplateColumns: '42% 58%', minHeight: '88vh' }}>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-10 pointer-events-none hidden sm:flex flex-col items-center gap-1.5">
-        <p className="text-white/22 text-[9px] uppercase tracking-[0.28em]">scroll</p>
-        <motion.div
-          className="w-px rounded-full"
-          style={{ height: 26, background: 'linear-gradient(to bottom, rgba(184,95,114,0.65), transparent)' }}
-          animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.35, 0.85, 0.35] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        {/* LEFT — text panel */}
+        <div className="relative flex flex-col justify-center px-10 lg:px-16 xl:px-20 py-24 bg-white z-10"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}>
+
+          <AnimatePresence mode="wait">
+            <motion.div key={current}
+              initial={{ opacity: 0, x: -32 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 24 }}
+              transition={{ duration: 0.6, ease: [0.3, 1, 0.3, 1] }}>
+
+              <motion.span
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                className="flex items-center gap-2 text-xs font-bold tracking-[0.22em] uppercase text-rose-500 mb-5">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                {slide.eyebrow}
+              </motion.span>
+
+              <motion.p
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.5 }}
+                className="font-script text-rose-400 text-2xl sm:text-3xl mb-1 leading-none">
+                {slide.title.split('\n')[0]}
+              </motion.p>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.22, duration: 0.6, ease: [0.3, 1, 0.3, 1] }}
+                className="font-display font-bold text-ink-900 leading-[0.9] mb-6"
+                style={{ fontSize: 'clamp(3rem, 5vw, 5.5rem)' }}>
+                {slide.title.split('\n')[1] || slide.title}
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="text-ink-500 text-base leading-relaxed mb-10 max-w-xs">
+                {slide.sub}
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.38, duration: 0.5 }}
+                className="flex flex-wrap gap-3 mb-12">
+                <motion.button
+                  onClick={() => onCatSelect(slide.cat)}
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 bg-ink-900 hover:bg-rose-500 text-white font-semibold px-8 py-4 rounded-full transition-all duration-300 shadow-btn hover:shadow-btn-hover">
+                  {slide.cta} ♡
+                </motion.button>
+                <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1db954] text-white font-semibold px-7 py-4 rounded-full transition-all duration-300">
+                  <WaIcon /> Pedir
+                </a>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="flex items-center gap-5 mb-10">
+                <div>
+                  <p className="text-lg font-bold text-ink-900 leading-none tabular-nums"><CountNum to={1000} duration={1.8} delay={0.6} />+</p>
+                  <p className="text-[10px] text-ink-400 mt-0.5 uppercase tracking-wider">Clientas</p>
+                </div>
+                <div className="w-px h-7 bg-ink-200" />
+                <div>
+                  <p className="text-lg font-bold text-ink-900 leading-none tabular-nums"><CountNum to={50} duration={1.5} delay={0.7} />+</p>
+                  <p className="text-[10px] text-ink-400 mt-0.5 uppercase tracking-wider">Marcas</p>
+                </div>
+                <div className="w-px h-7 bg-ink-200" />
+                <div>
+                  <p className="text-lg font-bold text-ink-900 leading-none">CR</p>
+                  <p className="text-[10px] text-ink-400 mt-0.5 uppercase tracking-wider">Todo el país</p>
+                </div>
+              </motion.div>
+
+              <div className="flex items-center gap-3">
+                <button onClick={prev} className="w-10 h-10 rounded-full border-2 border-ink-200 hover:border-rose-400 flex items-center justify-center text-ink-600 hover:text-rose-500 transition-all">
+                  <ChevronIcon dir="left" />
+                </button>
+                <div className="flex gap-2">
+                  {SLIDE_CONFIG.map((_, i) => (
+                    <button key={i} onClick={() => { setPaused(true); setCurrent(i); }}
+                      className={`rounded-full transition-all duration-300 ${i === current ? 'w-7 h-2.5 bg-ink-900' : 'w-2.5 h-2.5 bg-ink-200 hover:bg-ink-400'}`} />
+                  ))}
+                </div>
+                <button onClick={next} className="w-10 h-10 rounded-full border-2 border-ink-200 hover:border-rose-400 flex items-center justify-center text-ink-600 hover:text-rose-500 transition-all">
+                  <ChevronIcon dir="right" />
+                </button>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* RIGHT — TikTok video */}
+        <HeroVideoPanel />
       </div>
     </section>
   );
 }
 
-/* ─── Trust bar — dark tiles ─── */
-function TrustBar() {
+/* ─── Social icons ─── */
+const InstagramIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+  </svg>
+);
+const TikTokIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/>
+  </svg>
+);
+const FacebookIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+);
+
+/* ─── Location + social bar ─── */
+/* Exact coordinates from Google Maps place data */
+const MAP_SRC        = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3929!2d-84.7373714!3d9.9831039!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8fa03154759b38a3%3A0xac4f35b09c9145f1!2sJD%20Virtual%20Store!5e0!3m2!1ses!2scr!4v1713500000000!5m2!1ses!2scr';
+const STREET_SRC     = 'https://maps.google.com/maps?q=JD+Virtual+Store,+El+Roble,+Puntarenas&layer=c&cbll=9.9830986,-84.7347965&cbp=12,0,0,0,0&output=svembed';
+const MAPS_SHARE_URL = 'https://maps.app.goo.gl/6xtpLET4qTGUxvme9';
+
+function LocationSocialBar() {
+  const [view, setView] = useState('street');
+
+  const SOCIALS = [
+    { href: 'https://www.instagram.com/jd_virtual/',                        label: 'Instagram', icon: <InstagramIcon />, color: '#E1306C', bg: 'rgba(225,48,108,0.12)' },
+    { href: 'https://www.tiktok.com/@jd_virtual_store',                     label: 'TikTok',    icon: <TikTokIcon />,    color: '#ffffff', bg: 'rgba(255,255,255,0.08)' },
+    { href: 'https://www.facebook.com/p/JD-Virtual-Store-100057624661917/', label: 'Facebook',  icon: <FacebookIcon />,  color: '#1877F2', bg: 'rgba(24,119,242,0.12)' },
+    { href: 'https://wa.me/50688045100',                                    label: 'WhatsApp',  icon: <WaIcon />,        color: '#25D366', bg: 'rgba(37,211,102,0.12)' },
+  ];
+
   return (
-    <div className="bg-ink-900 py-5 sm:py-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
-          {TRUST.map((t, i) => (
-            <motion.div key={t.title}
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.45, ease: [0.3, 1, 0.3, 1] }}
-              whileHover={{ scale: 1.04 }}
-              className="flex items-center gap-3 cursor-default">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-lg"
-                style={{ background: 'rgba(209,125,141,0.15)' }}>
-                {t.emoji}
+    <section className="relative bg-ink-900 overflow-hidden">
+      {/* Ambient orbs */}
+      <div className="pointer-events-none absolute -top-24 -left-16 w-80 h-80 rounded-full bg-rose-500/8 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 right-0 w-64 h-64 rounded-full bg-rose-400/6 blur-3xl" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+
+        {/* Section header */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="mb-8 sm:mb-10">
+          <span className="text-xs font-bold tracking-[0.22em] uppercase text-rose-400 block mb-1">Encuéntranos</span>
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-white leading-tight">
+            Visitanos en <span className="text-rose-400">El Roble</span>, Puntarenas
+          </h2>
+        </motion.div>
+
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch">
+
+          {/* ── Map card ── */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: [0.3, 1, 0.3, 1] }}
+            className="flex-1 min-w-0 flex flex-col">
+
+            {/* Toggle tabs — pill style */}
+            <div className="flex gap-1.5 mb-4 p-1 rounded-full w-fit"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {[
+                { id: 'street', label: 'Street View', icon: '🚶' },
+                { id: 'map',    label: 'Mapa',         icon: '🗺️' },
+              ].map((tab) => (
+                <motion.button
+                  key={tab.id}
+                  onClick={() => setView(tab.id)}
+                  layout
+                  className={`relative flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-full transition-colors duration-200 ${
+                    view === tab.id ? 'text-white' : 'text-white/40 hover:text-white/70'
+                  }`}>
+                  {view === tab.id && (
+                    <motion.span
+                      layoutId="tab-bg"
+                      className="absolute inset-0 rounded-full bg-rose-500"
+                      style={{ zIndex: -1 }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span>{tab.icon}</span>
+                  {tab.label}
+                </motion.button>
+              ))}
+            </div>
+
+            {/* iframes — stacked, fade between */}
+            <div className="relative rounded-2xl overflow-hidden flex-1"
+              style={{
+                height: 280,
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 24px 48px rgba(0,0,0,0.4)',
+              }}>
+              <iframe
+                src={MAP_SRC}
+                width="100%" height="100%"
+                style={{
+                  border: 0, position: 'absolute', inset: 0,
+                  opacity: view === 'map' ? 1 : 0,
+                  pointerEvents: view === 'map' ? 'auto' : 'none',
+                  transition: 'opacity 0.35s ease',
+                }}
+                loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade"
+                title="JD Virtual Store — mapa"
+              />
+              <iframe
+                src={STREET_SRC}
+                width="100%" height="100%"
+                style={{
+                  border: 0, position: 'absolute', inset: 0,
+                  opacity: view === 'street' ? 1 : 0,
+                  pointerEvents: view === 'street' ? 'auto' : 'none',
+                  transition: 'opacity 0.35s ease',
+                }}
+                loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade"
+                title="JD Virtual Store — Street View"
+              />
+            </div>
+          </motion.div>
+
+          {/* ── Info card ── */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: [0.3, 1, 0.3, 1], delay: 0.1 }}
+            className="lg:w-64 xl:w-72 flex flex-col gap-5">
+
+            {/* Location card */}
+            <div className="rounded-2xl p-5 flex-1"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-rose-400 mb-4">Ubicación</p>
+
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
+                  style={{ background: 'rgba(184,95,114,0.18)', border: '1px solid rgba(184,95,114,0.25)' }}>
+                  📍
+                </div>
+                <div>
+                  <p className="text-white font-semibold text-sm leading-tight">El Roble, Puntarenas</p>
+                  <p className="text-white/35 text-xs mt-0.5">Costa Rica</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-bold text-white leading-tight">{t.title}</p>
-                <p className="text-[11px] text-white/40 leading-tight mt-0.5">{t.sub}</p>
+
+              <div className="h-px bg-white/6 my-4" />
+
+              <a href={MAPS_SHARE_URL} target="_blank" rel="noopener noreferrer"
+                className="group flex items-center justify-between w-full text-xs font-semibold text-white/50 hover:text-rose-400 transition-colors duration-200">
+                <span>Abrir en Google Maps</span>
+                <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
+              </a>
+            </div>
+
+            {/* Socials card */}
+            <div className="rounded-2xl p-5"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-rose-400 mb-4">Seguinos en</p>
+
+              <div className="grid grid-cols-4 gap-2">
+                {SOCIALS.map((s) => (
+                  <motion.a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank" rel="noopener noreferrer"
+                    aria-label={s.label}
+                    whileHover={{ scale: 1.1, y: -3 }}
+                    whileTap={{ scale: 0.93 }}
+                    className="flex flex-col items-center gap-1.5 group">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:shadow-lg"
+                      style={{ background: s.bg, border: '1px solid rgba(255,255,255,0.08)', color: s.color }}>
+                      {s.icon}
+                    </div>
+                    <span className="text-[9px] text-white/30 group-hover:text-white/60 transition-colors font-medium">
+                      {s.label}
+                    </span>
+                  </motion.a>
+                ))}
               </div>
-            </motion.div>
-          ))}
+            </div>
+
+          </motion.div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Brand marquee — dual rows, opposite directions ─── */
+function BrandMarquee() {
+  const doubled  = [...MARQUEE_BRANDS, ...MARQUEE_BRANDS];
+  const reversed = [...doubled].reverse();
+  return (
+    <div className="relative bg-ink-900 border-t border-white/5 py-4 overflow-hidden space-y-2.5">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 z-10"
+        style={{ background: 'linear-gradient(to right, #1A1414, transparent)' }} />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 z-10"
+        style={{ background: 'linear-gradient(to left, #1A1414, transparent)' }} />
+      {/* Row 1 → left to right */}
+      <div className="flex animate-marquee whitespace-nowrap">
+        {doubled.map((b, i) => (
+          <span key={i} className="text-rose-400/70 text-[11px] font-bold uppercase tracking-[0.22em] mx-7 flex-shrink-0">
+            {b} <span className="text-rose-600/50 ml-7">✦</span>
+          </span>
+        ))}
+      </div>
+      {/* Row 2 → right to left */}
+      <div className="flex animate-marquee-reverse whitespace-nowrap">
+        {reversed.map((b, i) => (
+          <span key={i} className="text-white/22 text-[10px] font-medium uppercase tracking-[0.18em] mx-6 flex-shrink-0">
+            {b} <span className="text-white/12 ml-6">·</span>
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
-/* ─── Brand marquee — with edge fades ─── */
-function BrandMarquee() {
-  const doubled = [...MARQUEE_BRANDS, ...MARQUEE_BRANDS];
+/* ─── Stats strip — rose gradient with animated counters ─── */
+const STATS = [
+  { to: 1200, suffix: '+', label: 'Clientas felices',    emoji: '💕' },
+  { to: 50,   suffix: '+', label: 'Marcas originales',   emoji: '✨' },
+  { to: 3,    suffix: '',  label: 'Años en Costa Rica',  emoji: '🇨🇷' },
+  { to: 100,  suffix: '%', label: 'Originales garantizados', emoji: '✅' },
+];
+
+function StatsStrip() {
   return (
-    <div className="relative bg-ink-900 border-t border-white/5 py-3.5 overflow-hidden">
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 z-10"
-        style={{ background: 'linear-gradient(to right, #1A1414, transparent)' }} />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 z-10"
-        style={{ background: 'linear-gradient(to left, #1A1414, transparent)' }} />
-      <div className="flex animate-marquee whitespace-nowrap">
-        {doubled.map((b, i) => (
-          <span key={i} className="text-rose-400/65 text-[11px] font-semibold uppercase tracking-[0.22em] mx-7 flex-shrink-0">
-            {b} <span className="text-rose-600/50 ml-7">·</span>
-          </span>
-        ))}
+    <section className="relative py-12 sm:py-16 overflow-hidden">
+      <div className="absolute inset-0"
+        style={{ background: 'linear-gradient(135deg, #B85F72 0%, #93485A 45%, #C4728A 100%)' }} />
+      <div className="pointer-events-none absolute top-0 right-0 w-72 h-72 rounded-full bg-white/10 blur-3xl animate-orb-pulse" />
+      <div className="pointer-events-none absolute bottom-0 left-8 w-48 h-48 rounded-full bg-white/8 blur-2xl animate-orb-pulse" style={{ animationDelay: '2s' }} />
+      {[{x:'6%',y:'25%',s:4,d:'0.2s',t:'3.1s'},{x:'92%',y:'55%',s:3,d:'1.2s',t:'3.8s'},{x:'48%',y:'78%',s:4,d:'0.7s',t:'2.9s'}].map((p,i)=>(
+        <div key={i} className="pointer-events-none absolute rounded-full bg-white/50"
+          style={{left:p.x,top:p.y,width:p.s,height:p.s,
+            animationName:'sparkle-float',animationDuration:p.t,animationDelay:p.d,
+            animationTimingFunction:'ease-out',animationIterationCount:'infinite'}} />
+      ))}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-10">
+          {STATS.map((s, i) => (
+            <motion.div key={s.label}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.55, ease: [0.3, 1, 0.3, 1] }}
+              className="text-center">
+              <p className="text-3xl mb-2">{s.emoji}</p>
+              <p className="text-3xl sm:text-4xl font-bold text-white leading-none tabular-nums">
+                <CountNumView to={s.to} duration={2} />{s.suffix}
+              </p>
+              <p className="text-white/65 text-sm mt-2 font-medium">{s.label}</p>
+            </motion.div>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -452,17 +811,90 @@ function PromoBanner() {
 
         <div className="relative z-10 text-center sm:text-left">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-rose-400 mb-3">Productos 100% originales</p>
-          <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight text-white mb-2">
+          <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight text-white mb-3">
             Las marcas que amas,<br className="hidden sm:block" /> al mejor precio en{' '}
             <span className="text-rose-400">CR</span>
           </h3>
-          <p className="text-white/45 text-sm">Envíos rápidos · SINPE y transferencia · WhatsApp</p>
+          {/* Payment methods row */}
+          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+            {['SINPE Móvil', 'Transferencia', 'Efectivo'].map((m) => (
+              <span key={m} className="text-[11px] font-semibold text-white/60 bg-white/8 border border-white/12 px-2.5 py-1 rounded-full">
+                {m}
+              </span>
+            ))}
+          </div>
         </div>
-        <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-          className="relative z-10 flex-shrink-0 inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1db954] text-white font-bold px-8 py-4 rounded-full transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.04] active:scale-[0.97] text-sm sm:text-base whitespace-nowrap">
-          <WaIcon /> Pedir por WhatsApp
-        </a>
+        <div className="relative z-10 flex-shrink-0 flex flex-col items-center gap-3">
+          <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1db954] text-white font-bold px-8 py-4 rounded-full transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.04] active:scale-[0.97] text-sm sm:text-base whitespace-nowrap">
+            <WaIcon /> Pedir por WhatsApp
+          </a>
+          <p className="text-white/35 text-xs">Respuesta en minutos</p>
+        </div>
       </motion.div>
+    </section>
+  );
+}
+
+/* ─── Guarantee section — 3 promise cards ─── */
+const GUARANTEES = [
+  {
+    emoji: '✅',
+    title: 'Originales 100%',
+    desc:  'Trabajamos directo con distribuidores oficiales. Cada producto es auténtico o te devolvemos tu dinero.',
+  },
+  {
+    emoji: '🔄',
+    title: 'Cambios sin complicaciones',
+    desc:  'Si algo no está bien con tu pedido, lo resolvemos. Escríbenos por WhatsApp y coordinamos.',
+  },
+  {
+    emoji: '💬',
+    title: 'Asesoría personalizada',
+    desc:  'No sabés qué tono elegir? Te ayudamos. Respondemos rápido y con gusto por WhatsApp.',
+  },
+];
+
+function GuaranteeSection() {
+  return (
+    <section className="bg-white py-14 sm:py-20 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-10">
+          <span className="section-label">Nuestra promesa</span>
+          <h2 className="font-display text-3xl sm:text-4xl font-semibold text-ink-900 leading-tight">
+            Comprás con total <em className="text-rose-500 not-italic">confianza</em>
+          </h2>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-3 gap-5">
+          {GUARANTEES.map((g, i) => (
+            <motion.div
+              key={g.title}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-30px' }}
+              transition={{ delay: i * 0.1, duration: 0.55, ease: [0.3, 1, 0.3, 1] }}
+              whileHover={{ y: -4 }}
+              className="group relative bg-cream-50 hover:bg-white border border-cream-200 hover:border-rose-200 hover:shadow-card rounded-2xl p-7 transition-all duration-300 text-center">
+              {/* Top accent line */}
+              <div className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-t-2xl"
+                style={{ background: 'linear-gradient(90deg, #C9A875, #B85F72)' }} />
+              <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl mx-auto mb-5">
+                {g.emoji}
+              </div>
+              <h3 className="font-display text-lg font-semibold text-ink-900 mb-2 group-hover:text-rose-500 transition-colors duration-300">
+                {g.title}
+              </h3>
+              <p className="text-ink-500 text-sm leading-relaxed">{g.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
@@ -738,43 +1170,71 @@ function AboutSection() {
   );
 }
 
-/* ─── Shipping ─── */
+/* ─── How it works / Shipping — timeline steps ─── */
+const HOW_STEPS = [
+  { num: '01', emoji: '🛍️', title: 'Elegí tu producto', desc: 'Explorá el catálogo y encontrá exactamente lo que querés.' },
+  { num: '02', emoji: '💳', title: 'Pagá con SINPE', desc: 'Transferencia bancaria o SINPE Móvil. Rápido, fácil y seguro.' },
+  { num: '03', emoji: '📦', title: 'Recibís en casa', desc: 'Correos de CR a todo el país, Express Puntarenas o retiro gratis.' },
+];
+
 function ShippingSection() {
-  const methods = [
-    { Icon: BoxIcon,       title: 'Correos de CR',      desc: '3–5 días hábiles a todo el país. Desde ₡2,000.' },
-    { Icon: ZapIcon,       title: 'Express Puntarenas', desc: 'Mismo día o siguiente en zona Puntarenas.' },
-    { Icon: HandshakeIcon, title: 'Retiro en El Roble', desc: 'Gratis. Coordinamos lugar y hora por WhatsApp.' },
-  ];
   return (
-    <section id="envios" className="bg-white py-16 sm:py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="envios" className="bg-cream-50 py-16 sm:py-24 overflow-hidden">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-12">
-          <span className="section-label">Envíos</span>
-          <h2 className="section-title">Coordinamos tu entrega</h2>
+          className="text-center mb-14 sm:mb-20">
+          <span className="section-label">Así de fácil</span>
+          <h2 className="section-title">¿Cómo comprar en JD Virtual?</h2>
         </motion.div>
-        <div className="grid sm:grid-cols-3 gap-5">
-          {methods.map((m, i) => (
-            <motion.div key={m.title}
-              initial={{ opacity: 0, y: 28 }}
+
+        {/* Steps */}
+        <div className="relative grid sm:grid-cols-3 gap-10 sm:gap-6">
+          {/* Dashed connector line (desktop only) */}
+          <div className="hidden sm:block absolute top-10 left-[calc(16.67%+2.5rem)] right-[calc(16.67%+2.5rem)] h-px"
+            style={{ background: 'repeating-linear-gradient(90deg,#EDB7C1 0,#EDB7C1 8px,transparent 8px,transparent 18px)' }} />
+
+          {HOW_STEPS.map((s, i) => (
+            <motion.div key={s.num}
+              initial={{ opacity: 0, y: 32 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.55, ease: [0.3, 1, 0.3, 1] }}
-              whileHover={{ y: -6, transition: { duration: 0.25 } }}
-              className="bg-cream-50 border border-cream-200 rounded-3xl p-8 text-center hover:border-rose-200 hover:shadow-card-hover transition-all duration-400 group cursor-default">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5 text-rose-500 group-hover:bg-rose-500 group-hover:text-white transition-all duration-300"
-                style={{ background: 'rgba(184,95,114,0.1)' }}>
-                <m.Icon />
-              </div>
-              <h3 className="font-display text-xl font-semibold text-ink-900 mb-3">{m.title}</h3>
-              <p className="text-ink-500 text-sm leading-relaxed">{m.desc}</p>
+              transition={{ delay: i * 0.15, duration: 0.6, ease: [0.3, 1, 0.3, 1] }}
+              className="group relative flex flex-col items-center text-center">
+
+              {/* Icon circle */}
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: [0, -4, 4, 0] }}
+                transition={{ duration: 0.4 }}
+                className="relative z-10 w-20 h-20 rounded-full border-2 border-rose-200 group-hover:border-rose-400 bg-white flex flex-col items-center justify-center mb-6 shadow-card group-hover:shadow-btn transition-all duration-300">
+                <span className="text-2xl">{s.emoji}</span>
+                <span className="text-[9px] font-bold text-rose-400 tracking-[0.18em] mt-0.5">{s.num}</span>
+              </motion.div>
+
+              <h3 className="font-display text-lg sm:text-xl font-semibold text-ink-900 mb-2 group-hover:text-rose-500 transition-colors duration-300">{s.title}</h3>
+              <p className="text-ink-500 text-sm leading-relaxed max-w-[220px] mx-auto">{s.desc}</p>
             </motion.div>
           ))}
         </div>
+
+        {/* CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+          className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <motion.a
+            href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
+            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+            className="inline-flex items-center gap-2 bg-ink-900 hover:bg-rose-500 text-white font-bold px-8 py-4 rounded-full transition-all duration-300 shadow-btn hover:shadow-btn-hover">
+            <WaIcon /> Empezar a comprar
+          </motion.a>
+          <p className="text-ink-400 text-sm">o explorá el catálogo de <Link to="/?cat=todos" className="text-rose-500 font-semibold hover:underline">todos los productos</Link></p>
+        </motion.div>
       </div>
     </section>
   );
@@ -810,7 +1270,6 @@ function FloatingWa() {
 export default function Home() {
   const [selectedCat, setSelectedCat] = useState(null);
   const catalogRef    = useRef(null);
-  const categoryImages = useCategoryPreviews();
 
   const handleCatSelect = (cat) => {
     setSelectedCat(cat || 'todos');
@@ -827,12 +1286,11 @@ export default function Home() {
 
   return (
     <main>
-      <Hero onCatSelect={handleCatSelect} categoryImages={categoryImages} />
-      <TrustBar />
+      <Hero onCatSelect={handleCatSelect} />
+      <LocationSocialBar />
       <BrandMarquee />
       <CategoryRow onCatSelect={handleCatSelect} />
       <FeaturedSection />
-      <PromoBanner />
       <Catalog externalCat={selectedCat} catalogRef={catalogRef} />
       <TestimonialsSection />
       <AboutSection />
