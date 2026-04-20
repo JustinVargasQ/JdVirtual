@@ -1,87 +1,156 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import ProductCard from '../components/ui/ProductCard';
 import FilterBar from '../components/ui/FilterBar';
 import { useProducts, useFeatured, useCategoryPreviews } from '../hooks/useProducts';
 
-/* ── Hero slide config (no images — come from real products) ── */
+/* ─── Slide config ─── */
 const SLIDE_CONFIG = [
   {
-    tag: 'Nuevos ingresos',
+    tag: '✨ Nuevos ingresos',
     title: 'Tu nueva\nobsesión',
-    sub: 'Maquillaje y skincare de marcas originales con envíos a todo Costa Rica.',
-    cta: 'Ver catálogo',
-    cat: null,
-    bg: '#FDF2F5',
-    accent: '#B85F72',
+    sub:  'Maquillaje y skincare de marcas originales con envíos a todo Costa Rica.',
+    cta:  'Ver catálogo',
+    cat:  null,
   },
   {
-    tag: 'Skincare coreano',
+    tag: '🌿 Skincare coreano',
     title: 'Cuida tu\npiel hoy',
-    sub: 'Productos auténticos con resultados reales para tu rutina diaria.',
-    cta: 'Ver skincare',
-    cat: 'skincare',
-    bg: '#FBEEF2',
-    accent: '#A04B60',
+    sub:  'Productos auténticos con resultados reales para tu rutina diaria.',
+    cta:  'Ver skincare',
+    cat:  'skincare',
   },
   {
-    tag: 'Maquillaje',
+    tag: '💄 Maquillaje',
     title: 'Brilla con\ntu estilo',
-    sub: 'Las marcas que amas al mejor precio en Costa Rica.',
-    cta: 'Ver maquillaje',
-    cat: 'maquillaje',
-    bg: '#F7E8ED',
-    accent: '#C4728A',
+    sub:  'Las marcas que amas al mejor precio en Costa Rica.',
+    cta:  'Ver maquillaje',
+    cat:  'maquillaje',
   },
 ];
 
 const CATEGORIES = [
-  { label: 'Skin care',   cat: 'skincare',   img: '/imgs/Skincare.jpeg'    },
-  { label: 'Maquillaje',  cat: 'maquillaje', img: '/imgs/Maquillaje.jpeg'  },
-  { label: 'Accesorios',  cat: 'accesorios', img: '/imgs/Accesorios.jpeg'  },
-  { label: 'Perfumes',    cat: 'perfumes',   img: '/imgs/Perfume.jpeg'     },
-  { label: 'Cabello',     cat: 'cabello',    img: '/imgs/Cabello.jpeg'     },
+  { label: 'Skin care',  cat: 'skincare',   img: '/imgs/Skincare.jpeg'   },
+  { label: 'Maquillaje', cat: 'maquillaje', img: '/imgs/Maquillaje.jpeg' },
+  { label: 'Accesorios', cat: 'accesorios', img: '/imgs/Accesorios.jpeg' },
+  { label: 'Perfumes',   cat: 'perfumes',   img: '/imgs/Perfume.jpeg'    },
+  { label: 'Cabello',    cat: 'cabello',    img: '/imgs/Cabello.jpeg'    },
 ];
-
-const TruckIcon   = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"/><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"/><circle cx="7" cy="18" r="2"/><path d="M15 18H9"/><circle cx="17" cy="18" r="2"/></svg>;
-const ShieldIcon  = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"/><path d="M20 6 9 17l-5-5"/></svg>;
-const ChatIcon    = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
-const CardIcon    = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>;
 
 const TRUST = [
-  { Icon: TruckIcon,  title: 'Envíos a todo CR',       sub: 'Correos, Uber, Express' },
-  { Icon: ShieldIcon, title: 'Originales 100%',         sub: 'Marcas auténticas' },
-  { Icon: ChatIcon,   title: 'Atención WhatsApp',       sub: 'Respuesta rápida' },
-  { Icon: CardIcon,   title: 'SINPE / Transferencia',   sub: 'Pago seguro' },
+  { emoji: '🚚', title: 'Envíos a todo CR',     sub: 'Correos, Uber, Express' },
+  { emoji: '✅', title: 'Originales 100%',       sub: 'Marcas auténticas' },
+  { emoji: '💬', title: 'Atención WhatsApp',     sub: 'Respuesta rápida' },
+  { emoji: '💳', title: 'SINPE / Transferencia', sub: 'Pago seguro' },
 ];
 
-const MARQUEE_BRANDS = ['Beauty Creations','The Ordinary','CeraVe','Italia Deluxe','ELF','Beau Visage','Amor Us','Mixsoon','Ushas','Amuse','Celavi','Kevin y Coco'];
+const MARQUEE_BRANDS = [
+  'Beauty Creations','The Ordinary','CeraVe','Italia Deluxe','ELF',
+  'Beau Visage','Amor Us','Mixsoon','Ushas','Amuse','Celavi','Kevin y Coco',
+];
 
+/* ─── Icons ─── */
 const WaIcon = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
   </svg>
 );
 
 const ChevronIcon = ({ dir }) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     {dir === 'left' ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
   </svg>
 );
 
-/* ── Hero — split layout ── */
+const BoxIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>;
+const ZapIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+const HandshakeIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/><path d="m9 12 2 2 4-4"/></svg>;
+
+/* ─── Animated count-up number ─── */
+function CountNum({ to, duration = 1.8, delay = 0.5 }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, Math.round);
+  useEffect(() => {
+    const ctrl = animate(count, to, { duration, ease: 'easeOut', delay });
+    return ctrl.stop;
+  }, [to]);
+  return <motion.span>{rounded}</motion.span>;
+}
+
+/* ─── Sparkle particles ─── */
+const SPARKLE_DEFS = [
+  { x: '7%',  y: '70%', s: 4, d: '0s',    t: '3.3s' },
+  { x: '15%', y: '58%', s: 3, d: '0.8s',  t: '2.9s' },
+  { x: '25%', y: '78%', s: 5, d: '1.4s',  t: '3.7s' },
+  { x: '34%', y: '52%', s: 3, d: '0.3s',  t: '2.6s' },
+  { x: '46%', y: '72%', s: 4, d: '2.1s',  t: '3.1s' },
+  { x: '55%', y: '63%', s: 3, d: '1.0s',  t: '2.8s' },
+  { x: '64%', y: '80%', s: 5, d: '0.2s',  t: '3.6s' },
+  { x: '73%', y: '55%', s: 3, d: '1.7s',  t: '2.7s' },
+  { x: '81%', y: '68%', s: 4, d: '0.9s',  t: '3.2s' },
+  { x: '89%', y: '83%', s: 3, d: '2.3s',  t: '2.5s' },
+  { x: '20%', y: '38%', s: 4, d: '1.6s',  t: '4.1s' },
+  { x: '68%', y: '42%', s: 3, d: '0.6s',  t: '3.4s' },
+  { x: '42%', y: '30%', s: 4, d: '2.6s',  t: '3.9s' },
+  { x: '88%', y: '35%', s: 3, d: '1.2s',  t: '3.0s' },
+];
+
+const STAR_DEFS = [
+  { x: '18%', y: '28%', d: '1.3s', t: '4.8s' },
+  { x: '74%', y: '22%', d: '2.7s', t: '5.2s' },
+  { x: '50%', y: '18%', d: '0.4s', t: '4.0s' },
+  { x: '32%', y: '45%', d: '3.0s', t: '4.5s' },
+];
+
+function SparkleParticles() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden z-[5]">
+      {SPARKLE_DEFS.map((s, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-white/75"
+          style={{
+            left: s.x, top: s.y,
+            width: s.s, height: s.s,
+            animationName: 'sparkle-float',
+            animationDuration: s.t,
+            animationDelay: s.d,
+            animationTimingFunction: 'ease-out',
+            animationIterationCount: 'infinite',
+          }}
+        />
+      ))}
+      {STAR_DEFS.map((s, i) => (
+        <div
+          key={`star-${i}`}
+          className="absolute text-white/50 text-xs select-none"
+          style={{
+            left: s.x, top: s.y,
+            animationName: 'sparkle-float',
+            animationDuration: s.t,
+            animationDelay: s.d,
+            animationTimingFunction: 'ease-out',
+            animationIterationCount: 'infinite',
+          }}>
+          ✦
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Hero ─── */
 function Hero({ onCatSelect, categoryImages }) {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused]   = useState(false);
 
-  // Build slides merging config with real product images
   const SLIDES = SLIDE_CONFIG.map((s) => ({
     ...s,
     img: s.cat ? categoryImages[s.cat] : (Object.values(categoryImages)[0] || ''),
   }));
-
   const total = SLIDES.length;
+  const slide = SLIDES[current];
 
   useEffect(() => {
     if (paused) return;
@@ -89,107 +158,214 @@ function Hero({ onCatSelect, categoryImages }) {
     return () => clearInterval(t);
   }, [paused, total]);
 
-  const slide = SLIDES[current];
-  const prev  = () => setCurrent((c) => (c - 1 + total) % total);
-  const next  = () => setCurrent((c) => (c + 1) % total);
+  const prev = () => { setPaused(true); setCurrent((c) => (c - 1 + total) % total); };
+  const next = () => { setPaused(true); setCurrent((c) => (c + 1) % total); };
 
   return (
     <section
-      className="relative overflow-hidden transition-colors duration-700"
-      style={{ backgroundColor: slide.bg, minHeight: '88vh' }}
+      className="relative flex flex-col justify-end overflow-hidden"
+      style={{ minHeight: '100svh' }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}>
 
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-full grid md:grid-cols-2 gap-0 items-center"
-        style={{ minHeight: '88vh' }}>
+      {/* Background image — crossfade */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`bg-${current}`}
+          className="absolute inset-0"
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1, ease: [0.3, 1, 0.3, 1] }}>
+          <img
+            src={slide.img}
+            alt={slide.tag}
+            className="w-full h-full object-cover object-center"
+            style={{ minHeight: '100svh' }}
+          />
+          {/* Dark gradient overlay */}
+          <div className="absolute inset-0"
+            style={{ background: 'linear-gradient(to top, rgba(18,10,12,0.97) 0%, rgba(18,10,12,0.65) 38%, rgba(18,10,12,0.22) 65%, rgba(18,10,12,0.35) 100%)' }} />
+          {/* Rose tint at bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-80"
+            style={{ background: 'linear-gradient(to top, rgba(184,95,114,0.28), transparent)' }} />
+        </motion.div>
+      </AnimatePresence>
 
-        {/* Left: Text */}
-        <div className="flex flex-col justify-center py-20 md:py-0 z-10">
-          <AnimatePresence mode="wait">
-            <motion.div key={current}
-              initial={{ opacity: 0, x: -30 }}
+      {/* Floating sparkle particles */}
+      <SparkleParticles />
+
+      {/* Ambient orbs */}
+      <div className="pointer-events-none absolute top-[10%] right-[5%] w-72 h-72 sm:w-[28rem] sm:h-[28rem] rounded-full bg-rose-500/18 blur-3xl animate-orb-pulse" />
+      <div className="pointer-events-none absolute top-[50%] left-[2%] w-48 h-48 sm:w-72 sm:h-72 rounded-full bg-rose-300/12 blur-3xl animate-orb-pulse" style={{ animationDelay: '2.5s' }} />
+      <div className="pointer-events-none absolute bottom-[15%] right-[25%] w-40 h-40 rounded-full bg-[#C9A875]/12 blur-2xl animate-orb-pulse" style={{ animationDelay: '1.2s' }} />
+
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pb-20 sm:pb-28 pt-36">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current}
+            initial={{ opacity: 0, y: 36 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -18 }}
+            transition={{ duration: 0.65, ease: [0.3, 1, 0.3, 1] }}>
+
+            {/* Pill badge — breathe animation */}
+            <motion.div
+              initial={{ opacity: 0, x: -24 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.55, ease: [0.3, 1, 0.3, 1] }}>
-
-              <span className="inline-block text-xs font-bold tracking-[0.22em] uppercase mb-5"
-                style={{ color: slide.accent }}>
+              transition={{ delay: 0.1, duration: 0.55 }}
+              className="mb-6">
+              <span
+                className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase px-4 py-2 rounded-full text-white border border-white/20 animate-breathe"
+                style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(14px)' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
                 {slide.tag}
               </span>
+            </motion.div>
 
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-none text-ink-900 mb-5 whitespace-pre-line">
-                {slide.title}
-              </h1>
+            {/* Headline — animated shimmer gradient */}
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.65 }}
+              className="font-display font-bold leading-[0.95] whitespace-pre-line mb-6 text-gradient-hero drop-shadow-2xl"
+              style={{ fontSize: 'clamp(3.2rem, 12vw, 8rem)' }}>
+              {slide.title}
+            </motion.h1>
 
-              <p className="text-ink-500 text-lg leading-relaxed mb-8 max-w-md">{slide.sub}</p>
+            {/* Subtitle */}
+            <motion.p
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.55 }}
+              className="text-white/72 text-base sm:text-lg leading-relaxed mb-9 max-w-md">
+              {slide.sub}
+            </motion.p>
 
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => onCatSelect(slide.cat)}
-                  className="inline-flex items-center font-bold px-8 py-3.5 rounded-full text-white transition-all duration-300 shadow-btn hover:shadow-btn-hover hover:scale-[1.02]"
-                  style={{ backgroundColor: slide.accent }}>
-                  {slide.cta}
-                </button>
-                <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1db954] text-white font-semibold px-6 py-3.5 rounded-full transition-colors">
-                  <WaIcon /> Pedir ahora
-                </a>
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.42, duration: 0.5 }}
+              className="flex flex-wrap gap-3 mb-12">
+              <button
+                onClick={() => onCatSelect(slide.cat)}
+                className="group inline-flex items-center gap-2 font-bold text-sm sm:text-base px-8 py-4 rounded-full text-ink-900 bg-white hover:bg-rose-50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.04] active:scale-[0.98]">
+                {slide.cta}
+                <span className="group-hover:translate-x-1.5 transition-transform duration-300 text-lg">→</span>
+              </button>
+              <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 font-bold text-sm sm:text-base px-8 py-4 rounded-full text-white bg-[#25D366] hover:bg-[#1db954] transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.04] active:scale-[0.98]">
+                <WaIcon /> Pedir ahora
+              </a>
+            </motion.div>
+
+            {/* Stats — count-up on each slide change */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.55 }}
+              className="flex items-center gap-6 sm:gap-8 flex-wrap">
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold text-white leading-none tabular-nums">
+                  <CountNum to={1000} duration={2} delay={0.8} />+
+                </p>
+                <p className="text-[11px] text-white/55 mt-1 uppercase tracking-wider">Clientas felices</p>
               </div>
-
-              {/* Arrows + dots */}
-              <div className="flex items-center gap-4 mt-12">
-                <button onClick={prev}
-                  className="w-10 h-10 rounded-full border-2 border-ink-200 hover:border-ink-700 flex items-center justify-center text-ink-600 hover:text-ink-900 transition-all">
-                  <ChevronIcon dir="left" />
-                </button>
-                <div className="flex gap-2">
-                  {SLIDES.map((_, i) => (
-                    <button key={i} onClick={() => setCurrent(i)}
-                      className={`transition-all duration-300 rounded-full ${i === current ? 'w-7 h-2.5 bg-ink-900' : 'w-2.5 h-2.5 bg-ink-300 hover:bg-ink-500'}`} />
-                  ))}
-                </div>
-                <button onClick={next}
-                  className="w-10 h-10 rounded-full border-2 border-ink-200 hover:border-ink-700 flex items-center justify-center text-ink-600 hover:text-ink-900 transition-all">
-                  <ChevronIcon dir="right" />
-                </button>
+              <div className="w-px h-10 bg-white/20 hidden sm:block" />
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold text-white leading-none tabular-nums">
+                  <CountNum to={50} duration={1.5} delay={0.9} />+
+                </p>
+                <p className="text-[11px] text-white/55 mt-1 uppercase tracking-wider">Marcas originales</p>
+              </div>
+              <div className="w-px h-10 bg-white/20 hidden sm:block" />
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold text-white leading-none">CR</p>
+                <p className="text-[11px] text-white/55 mt-1 uppercase tracking-wider">Todo el país</p>
               </div>
             </motion.div>
-          </AnimatePresence>
-        </div>
+          </motion.div>
+        </AnimatePresence>
 
-        {/* Right: Image */}
-        <div className="relative hidden md:flex items-end justify-center h-full overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={current}
-              src={slide.img}
-              alt={slide.tag}
-              initial={{ opacity: 0, scale: 1.06, x: 30 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.97, x: -20 }}
-              transition={{ duration: 0.65, ease: [0.3, 1, 0.3, 1] }}
-              className="w-full h-full object-cover absolute inset-0"
-              style={{ maxHeight: '88vh' }}
-            />
-          </AnimatePresence>
-          {/* Fade into left */}
-          <div className="absolute inset-y-0 left-0 w-24 z-10"
-            style={{ background: `linear-gradient(to right, ${slide.bg}, transparent)` }} />
+        {/* Slide controls */}
+        <div className="absolute bottom-7 right-5 sm:right-8 flex items-center gap-2.5 z-20">
+          <button onClick={prev}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white border border-white/25 hover:border-white/60 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}>
+            <ChevronIcon dir="left" />
+          </button>
+          <div className="flex gap-1.5">
+            {SLIDES.map((_, i) => (
+              <button key={i} onClick={() => { setPaused(true); setCurrent(i); }}
+                className={`rounded-full transition-all duration-400 ${i === current ? 'w-7 h-2 bg-white' : 'w-2 h-2 bg-white/35 hover:bg-white/65'}`} />
+            ))}
+          </div>
+          <button onClick={next}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white border border-white/25 hover:border-white/60 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}>
+            <ChevronIcon dir="right" />
+          </button>
         </div>
+      </div>
+
+      {/* Scroll indicator */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5 pointer-events-none">
+        <p className="text-white/35 text-[10px] uppercase tracking-[0.25em]">scroll</p>
+        <motion.div
+          className="w-px h-7 rounded-full bg-white/40"
+          animate={{ scaleY: [0.6, 1, 0.6], opacity: [0.3, 0.8, 0.3] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+        />
       </div>
     </section>
   );
 }
 
-/* ── Marquee brands ── */
+/* ─── Trust bar — dark tiles ─── */
+function TrustBar() {
+  return (
+    <div className="bg-ink-900 py-5 sm:py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+          {TRUST.map((t, i) => (
+            <motion.div key={t.title}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.45, ease: [0.3, 1, 0.3, 1] }}
+              whileHover={{ scale: 1.04 }}
+              className="flex items-center gap-3 cursor-default">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-lg"
+                style={{ background: 'rgba(209,125,141,0.15)' }}>
+                {t.emoji}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white leading-tight">{t.title}</p>
+                <p className="text-[11px] text-white/40 leading-tight mt-0.5">{t.sub}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Brand marquee — with edge fades ─── */
 function BrandMarquee() {
   const doubled = [...MARQUEE_BRANDS, ...MARQUEE_BRANDS];
   return (
-    <div className="bg-ink-900 py-3.5 overflow-hidden">
+    <div className="relative bg-ink-900 border-t border-white/5 py-3.5 overflow-hidden">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 z-10"
+        style={{ background: 'linear-gradient(to right, #1A1414, transparent)' }} />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 z-10"
+        style={{ background: 'linear-gradient(to left, #1A1414, transparent)' }} />
       <div className="flex animate-marquee whitespace-nowrap">
         {doubled.map((b, i) => (
-          <span key={i} className="text-rose-400 text-[11px] font-semibold uppercase tracking-[0.22em] mx-8 flex-shrink-0">
-            {b} <span className="text-rose-600 ml-8">·</span>
+          <span key={i} className="text-rose-400/65 text-[11px] font-semibold uppercase tracking-[0.22em] mx-7 flex-shrink-0">
+            {b} <span className="text-rose-600/50 ml-7">·</span>
           </span>
         ))}
       </div>
@@ -197,25 +373,43 @@ function BrandMarquee() {
   );
 }
 
-/* ── Category chips — static local images ── */
+/* ─── Category stories row ─── */
 function CategoryRow({ onCatSelect }) {
   return (
-    <section className="py-10 overflow-hidden">
+    <section className="py-10 sm:py-14 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55 }}>
+          <span className="section-label">Categorías</span>
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-tight animated-underline">
+            ¿Qué buscás hoy?
+          </h2>
+        </motion.div>
+      </div>
       <div className="overflow-x-auto scrollbar-hide">
-        <div className="flex items-center justify-start sm:justify-center gap-5 sm:gap-8 pb-2 px-6 sm:px-8 w-max sm:w-full mx-auto">
+        <div className="flex items-start gap-5 sm:gap-8 px-4 sm:px-6 lg:px-8 pb-2 w-max sm:w-full sm:justify-center mx-auto">
           {CATEGORIES.map((c, i) => (
             <motion.button
               key={c.cat}
               onClick={() => onCatSelect(c.cat)}
-              initial={{ opacity: 0, y: 18 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.06, duration: 0.45, ease: [0.3,1,0.3,1] }}
-              className="group flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-rose-400 transition-all duration-300 shadow-sm group-hover:shadow-md group-hover:scale-105 bg-cream-100">
-                <img src={c.img} alt={c.label} className="w-full h-full object-cover" loading="lazy" />
+              transition={{ delay: i * 0.08, duration: 0.5, ease: [0.3, 1, 0.3, 1] }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+              className="group flex flex-col items-center gap-3 flex-shrink-0 w-20 sm:w-26">
+              <div className="relative w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 rounded-full overflow-hidden ring-2 ring-transparent group-hover:ring-rose-400 group-hover:ring-offset-3 transition-all duration-300 shadow-md group-hover:shadow-lg">
+                <img src={c.img} alt={c.label} className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-500" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <span className="text-white text-[10px] font-bold tracking-wide">Ver →</span>
+                </div>
               </div>
-              <span className="text-xs font-semibold text-ink-600 group-hover:text-rose-500 transition-colors">{c.label}</span>
+              <span className="text-xs font-semibold text-ink-600 group-hover:text-rose-500 transition-colors text-center leading-tight">{c.label}</span>
             </motion.button>
           ))}
         </div>
@@ -224,80 +418,109 @@ function CategoryRow({ onCatSelect }) {
   );
 }
 
-/* ── Trust bar ── */
-function TrustBar() {
-  return (
-    <div className="border-y border-cream-100 bg-cream-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {TRUST.map((t, i) => (
-            <motion.div key={t.title}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.07, duration: 0.4 }}
-              className="flex items-center gap-3">
-              <span className="text-rose-500 flex-shrink-0"><t.Icon /></span>
-              <div>
-                <p className="text-sm font-bold text-ink-900 leading-tight">{t.title}</p>
-                <p className="text-xs text-ink-400 leading-tight">{t.sub}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Featured row ── */
+/* ─── Featured section ─── */
 function FeaturedSection() {
   const products = useFeatured(4);
   if (!products.length) return null;
+
   return (
-    <section className="py-16 bg-white">
+    <section className="py-14 sm:py-20 bg-cream-50 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55 }}
+          className="flex items-end justify-between mb-8">
           <div>
-            <span className="section-label">Lo más vendido</span>
-            <h2 className="section-title">Favoritas del momento</h2>
+            <span className="section-label">🔥 Tendencias</span>
+            <h2 className="section-title animated-underline">Favoritas del momento</h2>
           </div>
-          <Link to="/?featured=true" className="text-sm font-semibold text-rose-500 hover:text-rose-600 transition-colors hidden sm:flex items-center gap-1">
-            Ver todos <span className="text-base">→</span>
+          <Link to="/?featured=true"
+            className="text-sm font-semibold text-rose-500 hover:text-rose-600 transition-colors hidden sm:flex items-center gap-1 group">
+            Ver todos
+            <span className="group-hover:translate-x-1 transition-transform duration-200 text-base">→</span>
+          </Link>
+        </motion.div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
+          {products.map((p, i) => (
+            <motion.div
+              key={p.id || p._id}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.5, ease: [0.3, 1, 0.3, 1] }}>
+              <ProductCard product={p} index={i} />
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="mt-6 sm:hidden flex justify-center">
+          <Link to="/?featured=true"
+            className="text-sm font-semibold text-rose-500 flex items-center gap-1">
+            Ver todos los favoritos →
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
-          {products.map((p, i) => <ProductCard key={p.id || p._id} product={p} index={i} />)}
-        </div>
       </div>
     </section>
   );
 }
 
-/* ── Promo banner ── */
+/* ─── Promo banner — dark editorial ─── */
 function PromoBanner() {
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-rose-500 to-rose-700 text-white px-8 sm:px-14 py-10 flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div>
-          <p className="text-xs font-bold tracking-[0.2em] uppercase text-white/70 mb-2">Productos 100% originales</p>
-          <h3 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
-            Las marcas que amas,<br className="hidden sm:block" /> al mejor precio en CR
+    <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-6 sm:py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, ease: [0.3, 1, 0.3, 1] }}
+        className="relative overflow-hidden rounded-3xl bg-ink-900 px-8 sm:px-14 py-12 sm:py-16 flex flex-col sm:flex-row items-center justify-between gap-6">
+
+        {/* Animated ambient orbs */}
+        <div className="pointer-events-none absolute -top-16 -right-16 w-72 h-72 rounded-full bg-rose-500/22 blur-3xl animate-orb-pulse" />
+        <div className="pointer-events-none absolute -bottom-10 -left-10 w-56 h-56 rounded-full bg-rose-600/16 blur-2xl animate-orb-pulse" style={{ animationDelay: '2.2s' }} />
+        <div className="pointer-events-none absolute top-1/2 left-1/3 -translate-y-1/2 w-40 h-40 rounded-full bg-[#C9A875]/10 blur-2xl animate-orb-pulse" style={{ animationDelay: '1.1s' }} />
+
+        {/* Sparkle accents */}
+        {[
+          { x: '5%', y: '15%', d: '0.4s', t: '4.2s', s: 4 },
+          { x: '12%', y: '75%', d: '1.5s', t: '3.6s', s: 3 },
+          { x: '88%', y: '20%', d: '0.8s', t: '4.8s', s: 3 },
+          { x: '92%', y: '70%', d: '2.2s', t: '3.9s', s: 4 },
+        ].map((s, i) => (
+          <div key={i}
+            className="pointer-events-none absolute rounded-full bg-white/30"
+            style={{
+              left: s.x, top: s.y,
+              width: s.s, height: s.s,
+              animationName: 'sparkle-float',
+              animationDuration: s.t,
+              animationDelay: s.d,
+              animationTimingFunction: 'ease-out',
+              animationIterationCount: 'infinite',
+            }} />
+        ))}
+
+        <div className="relative z-10 text-center sm:text-left">
+          <p className="text-xs font-bold tracking-[0.2em] uppercase text-rose-400 mb-3">Productos 100% originales</p>
+          <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight text-white mb-2">
+            Las marcas que amas,<br className="hidden sm:block" /> al mejor precio en{' '}
+            <span className="text-rose-400">CR</span>
           </h3>
-          <p className="text-white/75 text-sm mt-2">Envíos rápidos · SINPE y transferencia · Atención por WhatsApp</p>
+          <p className="text-white/45 text-sm">Envíos rápidos · SINPE y transferencia · WhatsApp</p>
         </div>
         <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-          className="flex-shrink-0 inline-flex items-center gap-2 bg-white text-rose-600 font-bold px-7 py-3.5 rounded-full hover:bg-rose-50 transition-colors shadow-lg">
+          className="relative z-10 flex-shrink-0 inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1db954] text-white font-bold px-8 py-4 rounded-full transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.04] active:scale-[0.97] text-sm sm:text-base whitespace-nowrap">
           <WaIcon /> Pedir por WhatsApp
         </a>
-        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
-        <div className="absolute -right-4 -bottom-10 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
-      </div>
+      </motion.div>
     </section>
   );
 }
 
-/* ── Skeleton card ── */
+/* ─── Skeleton card ─── */
 function SkeletonCard() {
   return (
     <div className="rounded-2xl overflow-hidden border border-cream-200">
@@ -314,13 +537,12 @@ function SkeletonCard() {
 
 const PAGE_SIZE = 8;
 
-/* ── Main catalog ── */
+/* ─── Catalog ─── */
 function Catalog({ externalCat, catalogRef }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [animKey, setAnimKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  // Single source of truth: URL params (no duplicate state)
   const cat   = searchParams.get('cat')   || 'todos';
   const brand = searchParams.get('brand') || '';
   const q     = searchParams.get('q')     || '';
@@ -337,7 +559,6 @@ function Catalog({ externalCat, catalogRef }) {
     setVisibleCount(PAGE_SIZE);
   };
 
-  // Accept external category changes (hero / category row clicks)
   useEffect(() => {
     if (!externalCat) return;
     applyFilter({ cat: externalCat });
@@ -350,12 +571,12 @@ function Catalog({ externalCat, catalogRef }) {
 
   const catLabel = {
     todos: 'Todos los productos', ojos: 'Ojos', labios: 'Labios',
-    rostro: 'Rostro', skincare: 'Skincare', cabello: 'Cabello', maquillaje: 'Maquillaje',
-    accesorios: 'Accesorios', perfumes: 'Perfumes',
+    rostro: 'Rostro', skincare: 'Skincare', cabello: 'Cabello',
+    maquillaje: 'Maquillaje', accesorios: 'Accesorios', perfumes: 'Perfumes',
   }[cat] || cat;
 
-  const visible   = products.slice(0, visibleCount);
-  const hasMore   = visibleCount < products.length;
+  const visible = products.slice(0, visibleCount);
+  const hasMore = visibleCount < products.length;
 
   return (
     <section ref={catalogRef} id="tienda" className="bg-white py-20">
@@ -411,15 +632,15 @@ function Catalog({ externalCat, catalogRef }) {
             <>
               <motion.div key={`grid-${animKey}`}
                 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.38, ease: [0.3,1,0.3,1] }}
+                exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.38, ease: [0.3, 1, 0.3, 1] }}
                 className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
                 {visible.map((p, i) => <ProductCard key={p.id || p._id} product={p} index={i} />)}
               </motion.div>
-
               {hasMore && (
                 <div className="mt-10 flex justify-center">
                   <motion.button
                     initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
                     onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
                     className="inline-flex items-center gap-2 border-2 border-rose-400 text-rose-500 hover:bg-rose-500 hover:text-white font-semibold px-8 py-3 rounded-full transition-all duration-300">
                     Ver más productos
@@ -427,7 +648,6 @@ function Catalog({ externalCat, catalogRef }) {
                   </motion.button>
                 </div>
               )}
-
               {!hasMore && products.length > PAGE_SIZE && (
                 <p className="mt-8 text-center text-sm text-ink-400">
                   Mostrando todos los {products.length} productos
@@ -441,55 +661,23 @@ function Catalog({ externalCat, catalogRef }) {
   );
 }
 
-/* ── About ── */
-function AboutSection() {
-  return (
-    <section id="nosotras" className="bg-ink-900 text-white py-24 overflow-hidden">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }} transition={{ duration: 0.7, ease: [0.3,1,0.3,1] }}>
-          <span className="text-xs font-bold tracking-[0.2em] uppercase text-rose-400 mb-4 block">Nosotras</span>
-          <h2 className="font-display text-4xl sm:text-5xl font-bold leading-tight mb-6">
-            Tu tienda de <em className="text-rose-400 not-italic">confianza</em> en CR
-          </h2>
-          <p className="text-white/70 leading-relaxed mb-4 max-w-2xl mx-auto">
-            Somos JD Virtual Store, desde El Roble, Puntarenas. Nos especializamos en maquillaje y skincare de marcas auténticas al mejor precio.
-          </p>
-          <p className="text-white/70 leading-relaxed mb-8 max-w-2xl mx-auto">
-            Cada producto es cuidadosamente seleccionado. Atendemos por WhatsApp con respuesta rápida y enviamos a toda Costa Rica.
-          </p>
-          <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1db954] text-white font-bold px-7 py-3.5 rounded-full transition-colors">
-            <WaIcon /> Escríbenos
-          </a>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Testimonials ── */
+/* ─── Testimonials — auto-scroll on desktop, snap-scroll on mobile ─── */
 const TESTIMONIALS = [
-  { quote: 'Llegó en 2 días en perfecto estado. La paleta es idéntica a la foto.',    name: 'María F.',      city: 'Heredia',       tag: 'Ojos' },
-  { quote: 'Ya es mi tercera compra. Siempre responden rapidísimo por WhatsApp.',     name: 'Daniela R.',    city: 'San José',      tag: 'Skincare' },
-  { quote: 'Precios mejores que en el mall y todo original, 100% recomendadas.',       name: 'Andrea S.',     city: 'Liberia',       tag: 'Maquillaje' },
-  { quote: 'Me asesoraron por WhatsApp para elegir mi tono de base. Atención de 10.', name: 'Karen M.',      city: 'Pérez Zeledón', tag: 'Rostro' },
-  { quote: 'Las retiré en El Roble, súper fácil y super amables.',                     name: 'Valeria C.',    city: 'Puntarenas',    tag: 'Labios' },
-  { quote: 'El envío llegó rapidísimo. Todo bien empacado y sellado.',                 name: 'Sofía P.',      city: 'Alajuela',      tag: 'Skincare' },
-  { quote: 'Empaque bellísimo, se nota que le ponen amor a cada pedido.',              name: 'Natalia B.',    city: 'Cartago',       tag: 'Maquillaje' },
-  { quote: 'Mi paleta favorita. Volveré por más, sin dudarlo.',                         name: 'Fiorella G.',   city: 'San Ramón',     tag: 'Ojos' },
-  { quote: 'Envío llegó antes de lo esperado. Recomendadísimas a todas mis amigas.',  name: 'Stephanie L.',  city: 'Guanacaste',    tag: 'Skincare' },
+  { quote: 'Llegó en 2 días en perfecto estado. La paleta es idéntica a la foto.',     name: 'María F.',     city: 'Heredia',       tag: 'Ojos' },
+  { quote: 'Ya es mi tercera compra. Siempre responden rapidísimo por WhatsApp.',      name: 'Daniela R.',   city: 'San José',      tag: 'Skincare' },
+  { quote: 'Precios mejores que en el mall y todo original, 100% recomendadas.',        name: 'Andrea S.',    city: 'Liberia',       tag: 'Maquillaje' },
+  { quote: 'Me asesoraron por WhatsApp para elegir mi tono de base. Atención de 10.', name: 'Karen M.',     city: 'Pérez Zeledón', tag: 'Rostro' },
+  { quote: 'Las retiré en El Roble, súper fácil y super amables.',                      name: 'Valeria C.',   city: 'Puntarenas',    tag: 'Labios' },
+  { quote: 'El envío llegó rapidísimo. Todo bien empacado y sellado.',                  name: 'Sofía P.',     city: 'Alajuela',      tag: 'Skincare' },
+  { quote: 'Empaque bellísimo, se nota que le ponen amor a cada pedido.',               name: 'Natalia B.',   city: 'Cartago',       tag: 'Maquillaje' },
+  { quote: 'Mi paleta favorita. Volveré por más, sin dudarlo.',                          name: 'Fiorella G.',  city: 'San Ramón',     tag: 'Ojos' },
+  { quote: 'Envío llegó antes de lo esperado. Recomendadísimas a todas mis amigas.',   name: 'Stephanie L.', city: 'Guanacaste',    tag: 'Skincare' },
 ];
 
-function TestimonialsSection() {
-  const col1 = TESTIMONIALS.filter((_, i) => i % 3 === 0);
-  const col2 = TESTIMONIALS.filter((_, i) => i % 3 === 1);
-  const col3 = TESTIMONIALS.filter((_, i) => i % 3 === 2);
-
-  const TestimonialCard = ({ t }) => (
-    <div className="bg-white rounded-2xl p-6 border border-cream-200 hover:border-rose-200 hover:shadow-card transition-all duration-300 mb-4">
-      <div className="text-rose-400 text-base mb-3">★★★★★</div>
+function TestimonialCard({ t }) {
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-cream-200 hover:border-rose-200 hover:shadow-card transition-all duration-300 mb-4">
+      <div className="text-rose-400 text-sm mb-2.5">★★★★★</div>
       <p className="text-ink-700 text-sm leading-relaxed mb-4">"{t.quote}"</p>
       <div className="flex items-center justify-between">
         <div>
@@ -500,50 +688,141 @@ function TestimonialsSection() {
       </div>
     </div>
   );
+}
+
+function ScrollColumn({ items, direction = 'up', durationSecs = 34 }) {
+  const ref = useRef(null);
+  const doubled = [...items, ...items];
+  const pause  = () => { if (ref.current) ref.current.style.animationPlayState = 'paused'; };
+  const resume = () => { if (ref.current) ref.current.style.animationPlayState = 'running'; };
 
   return (
-    <section className="bg-cream-50 py-20 overflow-hidden">
+    <div className="overflow-hidden" style={{ height: '480px' }}>
+      <div
+        ref={ref}
+        onMouseEnter={pause}
+        onMouseLeave={resume}
+        style={{ animation: `scroll-${direction} ${durationSecs}s linear infinite` }}>
+        {doubled.map((t, i) => <TestimonialCard key={i} t={t} />)}
+      </div>
+    </div>
+  );
+}
+
+function TestimonialsSection() {
+  const col1 = TESTIMONIALS.filter((_, i) => i % 3 === 0);
+  const col2 = TESTIMONIALS.filter((_, i) => i % 3 === 1);
+  const col3 = TESTIMONIALS.filter((_, i) => i % 3 === 2);
+
+  return (
+    <section className="bg-cream-50 py-16 sm:py-24 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55 }}
+          className="text-center mb-12">
           <span className="section-label">Lo que dicen nuestras clientas</span>
-          <h2 className="section-title">Miles de reseñas, <em className="font-display italic text-rose-500">una sola promesa</em></h2>
-          <p className="text-ink-500 mt-3 max-w-xl mx-auto text-sm">Productos originales, envío rápido y atención cercana. Así trabajamos desde el día uno.</p>
+          <h2 className="section-title">
+            Miles de reseñas,{' '}
+            <em className="font-display italic text-rose-500">una sola promesa</em>
+          </h2>
+          <p className="text-ink-500 mt-3 max-w-xl mx-auto text-sm">
+            Productos originales, envío rápido y atención cercana.
+          </p>
+        </motion.div>
+
+        {/* Mobile: horizontal snap scroll */}
+        <div className="sm:hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-4 px-4">
+          <div className="flex gap-4 w-max pb-2">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="w-[80vw] flex-shrink-0 snap-start">
+                <TestimonialCard t={t} />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>{col1.map((t, i) => <TestimonialCard key={i} t={t} />)}</div>
-          <div className="md:mt-8">{col2.map((t, i) => <TestimonialCard key={i} t={t} />)}</div>
-          <div>{col3.map((t, i) => <TestimonialCard key={i} t={t} />)}</div>
+
+        {/* Desktop: infinite auto-scroll columns */}
+        <div className="hidden sm:grid sm:grid-cols-3 gap-5">
+          <ScrollColumn items={col1} direction="up"   durationSecs={32} />
+          <ScrollColumn items={col2} direction="down" durationSecs={28} />
+          <ScrollColumn items={col3} direction="up"   durationSecs={38} />
         </div>
       </div>
     </section>
   );
 }
 
-const BoxIcon       = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>;
-const ZapIcon       = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
-const HandshakeIcon = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/><path d="m9 12 2 2 4-4"/></svg>;
+/* ─── About ─── */
+function AboutSection() {
+  return (
+    <section id="nosotras" className="bg-ink-900 text-white py-20 sm:py-28 overflow-hidden">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+        {/* Ambient orbs */}
+        <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 rounded-full bg-rose-500/10 blur-3xl animate-orb-pulse" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-rose-400/8 blur-3xl animate-orb-pulse" style={{ animationDelay: '3s' }} />
 
-/* ── Shipping ── */
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.3, 1, 0.3, 1] }}>
+          <span className="text-xs font-bold tracking-[0.2em] uppercase text-rose-400 mb-4 block">Nosotras</span>
+          <h2 className="font-display text-4xl sm:text-5xl font-bold leading-tight mb-6">
+            Tu tienda de <em className="text-rose-400 not-italic">confianza</em> en CR
+          </h2>
+          <p className="text-white/65 leading-relaxed mb-4 max-w-2xl mx-auto">
+            Somos JD Virtual Store, desde El Roble, Puntarenas. Nos especializamos en maquillaje y skincare de marcas auténticas al mejor precio.
+          </p>
+          <p className="text-white/65 leading-relaxed mb-8 max-w-2xl mx-auto">
+            Cada producto es cuidadosamente seleccionado. Atendemos por WhatsApp con respuesta rápida y enviamos a toda Costa Rica.
+          </p>
+          <motion.a
+            href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
+            className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1db954] text-white font-bold px-8 py-4 rounded-full transition-colors shadow-xl">
+            <WaIcon /> Escríbenos
+          </motion.a>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Shipping ─── */
 function ShippingSection() {
   const methods = [
-    { Icon: BoxIcon,       title: 'Correos de CR',       desc: '3–5 días hábiles a todo el país. Desde ₡2,000.' },
-    { Icon: ZapIcon,       title: 'Express Puntarenas',  desc: 'Mismo día o siguiente en zona Puntarenas.' },
-    { Icon: HandshakeIcon, title: 'Retiro en El Roble',  desc: 'Gratis. Coordinamos lugar y hora por WhatsApp.' },
+    { Icon: BoxIcon,       title: 'Correos de CR',      desc: '3–5 días hábiles a todo el país. Desde ₡2,000.' },
+    { Icon: ZapIcon,       title: 'Express Puntarenas', desc: 'Mismo día o siguiente en zona Puntarenas.' },
+    { Icon: HandshakeIcon, title: 'Retiro en El Roble', desc: 'Gratis. Coordinamos lugar y hora por WhatsApp.' },
   ];
   return (
-    <section id="envios" className="bg-cream-50 py-20">
+    <section id="envios" className="bg-white py-16 sm:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12">
           <span className="section-label">Envíos</span>
           <h2 className="section-title">Coordinamos tu entrega</h2>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-6">
+        </motion.div>
+        <div className="grid sm:grid-cols-3 gap-5">
           {methods.map((m, i) => (
             <motion.div key={m.title}
-              initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5, ease: [0.3,1,0.3,1] }}
-              className="bg-white border border-cream-200 rounded-3xl p-8 text-center hover:border-rose-200 hover:shadow-card-hover transition-all duration-500">
-              <div className="text-rose-500 mb-5 flex justify-center"><m.Icon /></div>
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.55, ease: [0.3, 1, 0.3, 1] }}
+              whileHover={{ y: -6, transition: { duration: 0.25 } }}
+              className="bg-cream-50 border border-cream-200 rounded-3xl p-8 text-center hover:border-rose-200 hover:shadow-card-hover transition-all duration-400 group cursor-default">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5 text-rose-500 group-hover:bg-rose-500 group-hover:text-white transition-all duration-300"
+                style={{ background: 'rgba(184,95,114,0.1)' }}>
+                <m.Icon />
+              </div>
               <h3 className="font-display text-xl font-semibold text-ink-900 mb-3">{m.title}</h3>
               <p className="text-ink-500 text-sm leading-relaxed">{m.desc}</p>
             </motion.div>
@@ -554,7 +833,33 @@ function ShippingSection() {
   );
 }
 
-/* ── Page ── */
+/* ─── Floating WhatsApp — with pulse rings ─── */
+function FloatingWa() {
+  return (
+    <div className="fixed bottom-5 right-5 z-50">
+      <div className="absolute inset-0 rounded-full bg-[#25D366] animate-wa-ring" />
+      <div className="absolute inset-0 rounded-full bg-[#25D366] animate-wa-ring" style={{ animationDelay: '1s' }} />
+      <motion.a
+        href="https://wa.me/50688045100"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Contactar por WhatsApp"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 1.5, duration: 0.5, type: 'spring', stiffness: 260, damping: 20 }}
+        whileHover={{ scale: 1.12 }}
+        whileTap={{ scale: 0.92 }}
+        className="relative z-10 w-14 h-14 rounded-full bg-[#25D366] text-white flex items-center justify-center"
+        style={{ boxShadow: '0 6px 28px rgba(37,211,102,0.55)' }}>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+      </motion.a>
+    </div>
+  );
+}
+
+/* ─── Page ─── */
 export default function Home() {
   const [selectedCat, setSelectedCat] = useState(null);
   const catalogRef    = useRef(null);
@@ -576,8 +881,8 @@ export default function Home() {
   return (
     <main>
       <Hero onCatSelect={handleCatSelect} categoryImages={categoryImages} />
-      <BrandMarquee />
       <TrustBar />
+      <BrandMarquee />
       <CategoryRow onCatSelect={handleCatSelect} />
       <FeaturedSection />
       <PromoBanner />
@@ -585,6 +890,7 @@ export default function Home() {
       <TestimonialsSection />
       <AboutSection />
       <ShippingSection />
+      <FloatingWa />
     </main>
   );
 }

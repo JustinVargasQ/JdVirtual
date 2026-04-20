@@ -52,12 +52,32 @@ export default {
           '0%':   { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
         },
+        float: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%':      { transform: 'translateY(-14px)' },
+        },
+        'orb-pulse': {
+          '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+          '50%':      { opacity: '0.75', transform: 'scale(1.18)' },
+        },
+        breathe: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%':      { transform: 'scale(1.05)', opacity: '0.85' },
+        },
+        'wa-ring': {
+          '0%':   { transform: 'scale(1)', opacity: '0.55' },
+          '100%': { transform: 'scale(2.4)', opacity: '0' },
+        },
       },
       animation: {
-        'fade-up':  'fade-up 0.6s cubic-bezier(.3,1,.3,1) both',
-        'fade-in':  'fade-in 0.5s ease both',
-        'shimmer':  'shimmer 2s linear infinite',
-        'marquee':  'marquee 30s linear infinite',
+        'fade-up':   'fade-up 0.6s cubic-bezier(.3,1,.3,1) both',
+        'fade-in':   'fade-in 0.5s ease both',
+        'shimmer':   'shimmer 2s linear infinite',
+        'marquee':   'marquee 30s linear infinite',
+        'float':     'float 4s ease-in-out infinite',
+        'orb-pulse': 'orb-pulse 5s ease-in-out infinite',
+        'breathe':   'breathe 3s ease-in-out infinite',
+        'wa-ring':   'wa-ring 2s ease-out infinite',
       },
       transitionTimingFunction: {
         'smooth': 'cubic-bezier(.3,1,.3,1)',
