@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useCart from '../hooks/useCart';
 import { formatCRC } from '../lib/currency';
 import { buildWhatsAppMessage } from '../lib/whatsapp';
+import AddressAutocomplete from '../components/ui/AddressAutocomplete';
 
 const PROVINCES = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
 const SHIPPING = { correos: { label: 'Correos de CR (3-5 días)', price: 2500 }, express: { label: 'Express zona Puntarenas', price: 1500 }, pickup: { label: 'Retiro en El Roble (gratis)', price: 0 } };
@@ -11,12 +12,22 @@ export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const navigate = useNavigate();
   const [shipping, setShipping] = useState('correos');
-  const [form, setForm] = useState({ name: '', phone: '', province: 'Puntarenas', address: '', notes: '' });
+  const [form, setForm] = useState({ name: '', phone: '', province: 'Puntarenas', address: '', notes: '', lat: null, lng: null });
 
   const shippingCost = SHIPPING[shipping].price;
   const grandTotal = total + shippingCost;
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleAddressSelect = (parsed) => {
+    setForm((f) => ({
+      ...f,
+      address: parsed.address,
+      province: parsed.province || f.province,
+      lat: parsed.lat,
+      lng: parsed.lng,
+    }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -69,7 +80,20 @@ export default function Checkout() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Dirección exacta *</label>
-                  <input required value={form.address} onChange={set('address')} placeholder="Ciudad, barrio, señas" className={inputCls} />
+                  <AddressAutocomplete
+                    required
+                    value={form.address}
+                    onChange={(v) => setForm((f) => ({ ...f, address: v }))}
+                    onSelect={handleAddressSelect}
+                    placeholder="Empezá a escribir tu dirección..."
+                    className={inputCls}
+                  />
+                  {form.lat && (
+                    <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Dirección verificada con Google Maps
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Notas adicionales</label>

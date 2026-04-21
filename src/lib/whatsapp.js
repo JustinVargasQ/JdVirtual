@@ -18,6 +18,9 @@ export function buildWhatsAppMessage(items, customer = null) {
   if (customer?.name)    parts.push(`\nNombre: ${customer.name}`);
   if (customer?.phone)   parts.push(`Teléfono: ${customer.phone}`);
   if (customer?.address) parts.push(`Dirección: ${customer.address}`);
+  if (customer?.lat && customer?.lng) {
+    parts.push(`📍 Ubicación: https://maps.google.com/?q=${customer.lat},${customer.lng}`);
+  }
 
   parts.push('\n¿Cómo puedo coordinar el pago y envío? 🙏');
 
