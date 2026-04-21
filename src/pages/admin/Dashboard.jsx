@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import { PRODUCTS } from '../../data/products';
+import api from '../../lib/api';
+import { formatCRC } from '../../lib/currency';
+
+const USE_API = import.meta.env.VITE_API_URL;
 
 /* ── Icons ── */
 const DashIcon    = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
@@ -21,10 +25,20 @@ const NAV = [
 ];
 
 const PAGE_TITLES = {
-  '/admin':            'Dashboard',
-  '/admin/productos':  'Productos',
-  '/admin/ordenes':    'Órdenes',
-  '/admin/config':     'Configuración',
+  '/admin':                    'Dashboard',
+  '/admin/productos/nuevo':    'Nuevo producto',
+  '/admin/productos':          'Productos',
+  '/admin/ordenes':            'Órdenes',
+  '/admin/config':             'Configuración',
+};
+
+const STATUS_LABELS = {
+  pendiente:  { label: 'Pendiente',  dot: 'bg-yellow-400' },
+  confirmado: { label: 'Confirmado', dot: 'bg-blue-400'   },
+  preparando: { label: 'Preparando', dot: 'bg-purple-400' },
+  enviado:    { label: 'Enviado',    dot: 'bg-orange-400' },
+  entregado:  { label: 'Entregado',  dot: 'bg-green-400'  },
+  cancelado:  { label: 'Cancelado',  dot: 'bg-red-400'    },
 };
 
 /* ── Stat card ── */
@@ -62,11 +76,106 @@ function QuickCard({ icon, label, sub, to, href, bg = 'bg-rose-50', hover = 'hov
   return <Link to={to} className={cls}>{inner}</Link>;
 }
 
+/* ── Recent orders list ── */
+function RecentOrders({ orders, loading }) {
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-12 bg-cream-50 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+  if (!orders.length) {
+    return <p className="text-sm text-ink-400 text-center py-8">Aún no hay órdenes.</p>;
+  }
+  return (
+    <div className="divide-y divide-cream-100">
+      {orders.slice(0, 5).map((o) => {
+        const st = STATUS_LABELS[o.status] || { label: o.status, dot: 'bg-ink-400' };
+        return (
+          <Link key={o._id} to="/admin/ordenes"
+            className="flex items-center gap-3 py-2.5 hover:bg-cream-50/60 -mx-2 px-2 rounded-lg transition-colors">
+            <span className="font-mono font-bold text-rose-500 text-xs tracking-wide flex-shrink-0">{o.orderNumber}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-ink-900 truncate">{o.customer?.name}</p>
+              <div className="flex items-center gap-1.5 text-[11px] text-ink-400">
+                <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                {st.label}
+              </div>
+            </div>
+            <p className="font-bold text-ink-900 text-sm flex-shrink-0">{formatCRC(o.total)}</p>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Low stock list ── */
+function LowStock({ products }) {
+  const low = products
+    .filter((p) => p.isActive !== false && typeof p.stock === 'number' && p.stock <= 5)
+    .sort((a, b) => a.stock - b.stock)
+    .slice(0, 5);
+
+  if (!low.length) {
+    return <p className="text-sm text-ink-400 text-center py-8">Todo el inventario está saludable.</p>;
+  }
+  return (
+    <div className="divide-y divide-cream-100">
+      {low.map((p) => (
+        <Link key={p._id || p.id} to={`/admin/productos/${p._id || p.id}/editar`}
+          className="flex items-center gap-3 py-2.5 hover:bg-cream-50/60 -mx-2 px-2 rounded-lg transition-colors">
+          <div className="w-9 h-9 rounded-lg bg-cream-100 flex-shrink-0 flex items-center justify-center text-xs">📦</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-ink-900 truncate">{p.name}</p>
+            <p className="text-[11px] text-ink-400 truncate">{p.brand}</p>
+          </div>
+          <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+            p.stock === 0 ? 'bg-red-50 text-red-600' : 'bg-yellow-50 text-yellow-700'
+          }`}>
+            {p.stock === 0 ? 'Agotado' : `${p.stock} un.`}
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /* ── Dashboard home page ── */
 function DashboardHome({ adminName }) {
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
   const today    = new Date().toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const [stats, setStats]       = useState(null);
+  const [orders, setOrders]     = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading]   = useState(Boolean(USE_API));
+
+  useEffect(() => {
+    if (!USE_API) { setProducts(PRODUCTS); return; }
+    (async () => {
+      try {
+        const [statsRes, ordersRes, productsRes] = await Promise.all([
+          api.get('/orders/admin/stats'),
+          api.get('/orders/admin/all', { params: { limit: 5 } }),
+          api.get('/products/admin/all'),
+        ]);
+        setStats(statsRes.data);
+        setOrders(ordersRes.data.orders || []);
+        setProducts(productsRes.data.products || []);
+      } catch {
+        // keep defaults
+      } finally { setLoading(false); }
+    })();
+  }, []);
+
+  const productCount = USE_API ? products.length : PRODUCTS.length;
+  const activeCount  = USE_API ? products.filter((p) => p.isActive !== false).length : PRODUCTS.length;
+  const pending      = stats?.statusCounts?.pendiente || 0;
 
   return (
     <div className="space-y-6">
@@ -88,10 +197,35 @@ function DashboardHome({ adminName }) {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard icon="📦" label="Productos" value={PRODUCTS.length} sub="En catálogo" accent="#B85F72" bg="#FBF0F2" />
-        <StatCard icon="🛍️" label="Pedidos hoy"    value="—" sub="Requiere backend" accent="#3B82F6" bg="#EFF6FF" />
-        <StatCard icon="💰" label="Ventas semana"  value="—" sub="Requiere backend" accent="#16A34A" bg="#F0FDF4" />
-        <StatCard icon="👁️" label="Visitas"         value="—" sub="Google Analytics" accent="#D97706" bg="#FFFBEB" />
+        <StatCard icon="📦" label="Productos"     value={productCount}
+          sub={USE_API ? `${activeCount} activos` : 'En catálogo'} accent="#B85F72" bg="#FBF0F2" />
+        <StatCard icon="🛍️" label="Pedidos hoy"   value={stats ? stats.todayOrders : (USE_API ? '...' : '—')}
+          sub={stats ? `${stats.totalOrders} en total` : (USE_API ? 'Cargando' : 'Requiere backend')} accent="#3B82F6" bg="#EFF6FF" />
+        <StatCard icon="💰" label="Ventas 7 días" value={stats ? formatCRC(stats.weekRevenue) : (USE_API ? '...' : '—')}
+          sub="Últimos 7 días" accent="#16A34A" bg="#F0FDF4" />
+        <StatCard icon="⏳" label="Pendientes"    value={stats ? pending : (USE_API ? '...' : '—')}
+          sub={pending > 0 ? 'Por atender' : 'Al día'} accent="#D97706" bg="#FFFBEB" />
+      </div>
+
+      {/* Recent orders + Low stock */}
+      <div className="grid lg:grid-cols-2 gap-5">
+        <div className="bg-white rounded-2xl shadow-card border border-cream-100 p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Últimas órdenes</p>
+            <Link to="/admin/ordenes" className="text-xs text-rose-500 hover:text-rose-600 font-semibold">Ver todas →</Link>
+          </div>
+          {USE_API
+            ? <RecentOrders orders={orders} loading={loading} />
+            : <p className="text-sm text-ink-400 text-center py-8">Conectá el backend para ver órdenes.</p>}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-card border border-cream-100 p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Stock bajo</p>
+            <Link to="/admin/productos" className="text-xs text-rose-500 hover:text-rose-600 font-semibold">Ver productos →</Link>
+          </div>
+          <LowStock products={products} />
+        </div>
       </div>
 
       {/* Quick access */}
@@ -101,17 +235,6 @@ function DashboardHome({ adminName }) {
           <QuickCard icon="➕" label="Nuevo producto"  sub="Agregar al catálogo" to="/admin/productos/nuevo" bg="bg-rose-50"  hover="hover:bg-rose-100" />
           <QuickCard icon="🌐" label="Ver tienda"       sub="Abrir sitio público"  href="/" bg="bg-cream-50" hover="hover:bg-cream-100" />
           <QuickCard icon="💬" label="WhatsApp"         sub="Atender pedidos"       href="https://wa.me/50688045100" bg="bg-green-50" hover="hover:bg-green-100" />
-        </div>
-      </div>
-
-      {/* Tips card */}
-      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-5 flex items-start gap-4">
-        <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-xl flex-shrink-0">💡</div>
-        <div>
-          <p className="font-semibold text-ink-900 text-sm mb-1">Tip del día</p>
-          <p className="text-ink-500 text-sm leading-relaxed">
-            Mantené las fotos de tus productos con buena iluminación y fondo claro. Los productos con imágenes de calidad convierten hasta un 40% más.
-          </p>
         </div>
       </div>
     </div>

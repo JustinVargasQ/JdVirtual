@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import CartDrawer from './components/layout/CartDrawer';
+import Toaster from './components/ui/Toaster';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
@@ -9,6 +10,7 @@ import Confirmation from './pages/Confirmation';
 import AdminLogin from './pages/admin/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
+import AdminProductForm from './pages/admin/ProductForm';
 import AdminOrders from './pages/admin/Orders';
 import AdminConfig from './pages/admin/Config';
 import useAuthStore from './store/authStore';
@@ -32,6 +34,7 @@ function RequireAuth({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster />
       <Routes>
         {/* Public storefront */}
         <Route path="/" element={<StorefrontLayout><Home /></StorefrontLayout>} />
@@ -42,9 +45,11 @@ export default function App() {
         {/* Admin */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>}>
-          <Route path="productos" element={<AdminProducts />} />
-          <Route path="ordenes" element={<AdminOrders />} />
-          <Route path="config" element={<AdminConfig />} />
+          <Route path="productos"              element={<AdminProducts />} />
+          <Route path="productos/nuevo"        element={<AdminProductForm />} />
+          <Route path="productos/:id/editar"   element={<AdminProductForm />} />
+          <Route path="ordenes"                element={<AdminOrders />} />
+          <Route path="config"                 element={<AdminConfig />} />
         </Route>
 
         {/* Fallback */}

@@ -36,9 +36,18 @@ exports.getByNumber = async (req, res, next) => {
 
 exports.adminGetAll = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, q, page = 1, limit = 20 } = req.query;
     const filter = {};
     if (status) filter.status = status;
+
+    if (q) {
+      const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { orderNumber: rx },
+        { 'customer.name': rx },
+        { 'customer.phone': rx },
+      ];
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
     const [orders, total] = await Promise.all([

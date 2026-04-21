@@ -72,6 +72,14 @@ export default {
           '0%':   { transform: 'scale(1)', opacity: '0.55' },
           '100%': { transform: 'scale(2.4)', opacity: '0' },
         },
+        'slide-in-right': {
+          '0%':   { transform: 'translateX(100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)',    opacity: '1' },
+        },
+        'toast-in': {
+          '0%':   { transform: 'translateX(24px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)',    opacity: '1' },
+        },
       },
       animation: {
         'fade-up':   'fade-up 0.6s cubic-bezier(.3,1,.3,1) both',
@@ -83,6 +91,8 @@ export default {
         'orb-pulse': 'orb-pulse 5s ease-in-out infinite',
         'breathe':   'breathe 3s ease-in-out infinite',
         'wa-ring':   'wa-ring 2s ease-out infinite',
+        'slide-in-right': 'slide-in-right 0.25s ease-out both',
+        'toast-in':       'toast-in 0.2s ease-out both',
       },
       transitionTimingFunction: {
         'smooth': 'cubic-bezier(.3,1,.3,1)',
