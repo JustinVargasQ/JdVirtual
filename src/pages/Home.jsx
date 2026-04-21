@@ -402,9 +402,13 @@ const FacebookIcon = () => (
 
 /* ─── Location + social bar ─── */
 /* Exact coordinates from Google Maps place data */
+const GMAPS_KEY      = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 const MAP_SRC        = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3929!2d-84.7373714!3d9.9831039!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8fa03154759b38a3%3A0xac4f35b09c9145f1!2sJD%20Virtual%20Store!5e0!3m2!1ses!2scr!4v1713500000000!5m2!1ses!2scr';
-const STREET_SRC     = 'https://maps.google.com/maps?q=JD+Virtual+Store,+El+Roble,+Puntarenas&layer=c&cbll=9.9830986,-84.7347965&cbp=12,0,0,0,0&output=svembed';
+const STREET_SRC     = GMAPS_KEY
+  ? `https://www.google.com/maps/embed/v1/streetview?key=${GMAPS_KEY}&location=9.9830986,-84.7347965&heading=210&pitch=10&fov=80`
+  : 'https://maps.google.com/maps?q=JD+Virtual+Store,+El+Roble,+Puntarenas&layer=c&cbll=9.9830986,-84.7347965&cbp=12,0,0,0,0&output=svembed';
 const MAPS_SHARE_URL = 'https://maps.app.goo.gl/6xtpLET4qTGUxvme9';
+const STREET_OPEN_URL = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=9.9830986,-84.7347965';
 
 function LocationSocialBar() {
   const [view, setView] = useState('street');
@@ -475,12 +479,11 @@ function LocationSocialBar() {
               ))}
             </div>
 
-            {/* iframes — stacked, fade between */}
-            <div className="relative rounded-2xl overflow-hidden flex-1"
-              style={{
-                height: 280,
-                boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 24px 48px rgba(0,0,0,0.4)',
-              }}>
+            {/* Viewer — iframes on desktop, tap-to-open on mobile */}
+            <div className="relative rounded-2xl overflow-hidden flex-1 min-h-[360px] sm:min-h-[400px] md:min-h-[280px]"
+              style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 24px 48px rgba(0,0,0,0.4)' }}>
+
+              {/* Map iframe — works on all sizes */}
               <iframe
                 src={MAP_SRC}
                 width="100%" height="100%"
@@ -493,6 +496,8 @@ function LocationSocialBar() {
                 loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade"
                 title="JD Virtual Store — mapa"
               />
+
+              {/* Street View iframe — works on all devices with Embed API key, desktop-only with legacy URL */}
               <iframe
                 src={STREET_SRC}
                 width="100%" height="100%"
@@ -504,7 +509,40 @@ function LocationSocialBar() {
                 }}
                 loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade"
                 title="JD Virtual Store — Street View"
+                className={GMAPS_KEY ? '' : 'hidden md:block'}
               />
+
+              {/* Street View fallback — mobile only when no API key */}
+              {!GMAPS_KEY && (
+              <a href={STREET_OPEN_URL} target="_blank" rel="noopener noreferrer"
+                className="md:hidden absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center"
+                style={{
+                  opacity: view === 'street' ? 1 : 0,
+                  pointerEvents: view === 'street' ? 'auto' : 'none',
+                  transition: 'opacity 0.35s ease',
+                  background: 'linear-gradient(135deg, #1A1414 0%, #2E2626 50%, #1A1414 100%)',
+                }}>
+                <span className="pointer-events-none absolute -top-16 -right-12 w-56 h-56 rounded-full bg-rose-500/20 blur-3xl" />
+                <span className="pointer-events-none absolute -bottom-16 -left-12 w-56 h-56 rounded-full bg-rose-400/15 blur-3xl" />
+
+                <div className="relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+                  style={{ background: 'rgba(184,95,114,0.15)', border: '1px solid rgba(184,95,114,0.3)' }}>
+                  🚶
+                </div>
+                <div className="relative z-10">
+                  <p className="font-display text-lg font-semibold text-white mb-1">Recorré la calle</p>
+                  <p className="text-white/50 text-sm leading-relaxed max-w-xs">
+                    Abrí Street View en Google Maps para ver la tienda desde la calle
+                  </p>
+                </div>
+                <span className="relative z-10 inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-btn transition-colors">
+                  Abrir Street View
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 17L17 7M17 7H8M17 7V16"/>
+                  </svg>
+                </span>
+              </a>
+              )}
             </div>
           </motion.div>
 
