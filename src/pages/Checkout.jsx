@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useCart from '../hooks/useCart';
 import { formatCRC } from '../lib/currency';
 import { buildWhatsAppMessage } from '../lib/whatsapp';
-import AddressAutocomplete from '../components/ui/AddressAutocomplete';
+import MapAddressPicker from '../components/ui/MapAddressPicker';
 
 const PROVINCES = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
 const SHIPPING = { correos: { label: 'Correos de CR (3-5 días)', price: 2500 }, express: { label: 'Express zona Puntarenas', price: 1500 }, pickup: { label: 'Retiro en El Roble (gratis)', price: 0 } };
@@ -19,14 +19,8 @@ export default function Checkout() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const handleAddressSelect = (parsed) => {
-    setForm((f) => ({
-      ...f,
-      address: parsed.address,
-      province: parsed.province || f.province,
-      lat: parsed.lat,
-      lng: parsed.lng,
-    }));
+  const handleAddressPick = ({ address, lat, lng }) => {
+    setForm((f) => ({ ...f, address, lat, lng }));
   };
 
   const handleSubmit = (e) => {
@@ -80,20 +74,17 @@ export default function Checkout() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Dirección exacta *</label>
-                  <AddressAutocomplete
+                  <MapAddressPicker
                     required
                     value={form.address}
-                    onChange={(v) => setForm((f) => ({ ...f, address: v }))}
-                    onSelect={handleAddressSelect}
-                    placeholder="Empezá a escribir tu dirección..."
+                    onChange={(v) => setForm((f) => ({ ...f, address: v, lat: null, lng: null }))}
+                    onPick={handleAddressPick}
+                    placeholder="Ciudad, barrio, señas — o tocá 📍 Mapa"
                     className={inputCls}
                   />
-                  {form.lat && (
-                    <p className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      Dirección verificada con Google Maps
-                    </p>
-                  )}
+                  <p className="text-[11px] text-ink-400 mt-1">
+                    Tip: tocá <span className="font-semibold text-rose-500">📍 Mapa</span> para marcar tu ubicación exacta en el mapa.
+                  </p>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Notas adicionales</label>
