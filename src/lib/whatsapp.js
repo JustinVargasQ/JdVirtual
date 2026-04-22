@@ -3,26 +3,54 @@ import { WHATSAPP_NUMBER } from '../data/products';
 
 export function buildWhatsAppMessage(items, customer = null) {
   const lines = items.map(
-    (i) => `• ${i.name} × ${i.qty}  —  ${formatCRC(i.price * i.qty)}`
+    (i) => `  • ${i.name} × ${i.qty}  —  ${formatCRC(i.price * i.qty)}`
   );
-  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal     = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const shippingCost = Number(customer?.shippingCost) || 0;
+  const total        = subtotal + shippingCost;
 
   const parts = [
-    '¡Hola! Quisiera hacer el siguiente pedido 🛍️',
+    '*★ NUEVO PEDIDO ★*',
+    '━━━━━━━━━━━━━━━━━━',
     '',
+    '*PRODUCTOS*',
     ...lines,
     '',
-    `*Subtotal: ${formatCRC(subtotal)}*`,
+    `Subtotal: ${formatCRC(subtotal)}`,
   ];
 
-  if (customer?.name)    parts.push(`\nNombre: ${customer.name}`);
-  if (customer?.phone)   parts.push(`Teléfono: ${customer.phone}`);
-  if (customer?.address) parts.push(`Dirección: ${customer.address}`);
-  if (customer?.lat && customer?.lng) {
-    parts.push(`📍 Ubicación: https://maps.google.com/?q=${customer.lat},${customer.lng}`);
+  if (customer?.shippingMethod) {
+    parts.push(`Envío (${customer.shippingMethod}): ${shippingCost === 0 ? 'Gratis' : formatCRC(shippingCost)}`);
+  }
+  parts.push(`*TOTAL: ${formatCRC(total)}*`);
+
+  parts.push('', '━━━━━━━━━━━━━━━━━━', '', '*DATOS DEL CLIENTE*');
+  if (customer?.name)     parts.push(`Nombre: ${customer.name}`);
+  if (customer?.phone)    parts.push(`WhatsApp: ${customer.phone}`);
+  if (customer?.province) parts.push(`Provincia: ${customer.province}`);
+
+  if (customer?.address || (customer?.lat && customer?.lng)) {
+    parts.push('', '*DIRECCIÓN DE ENTREGA*');
+    if (customer?.address) parts.push(customer.address);
+
+    if (customer?.lat && customer?.lng) {
+      const lat = Number(customer.lat).toFixed(6);
+      const lng = Number(customer.lng).toFixed(6);
+      parts.push('');
+      parts.push('► Google Maps:');
+      parts.push(`https://www.google.com/maps?q=${lat},${lng}`);
+      parts.push('');
+      parts.push('► Waze (navegación):');
+      parts.push(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
+    }
   }
 
-  parts.push('\n¿Cómo puedo coordinar el pago y envío? 🙏');
+  if (customer?.notes?.trim()) {
+    parts.push('', '*NOTAS*', customer.notes.trim());
+  }
+
+  parts.push('', '━━━━━━━━━━━━━━━━━━');
+  parts.push('', '¿Cómo coordinamos el pago?');
 
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(parts.join('\n'))}`;
 }

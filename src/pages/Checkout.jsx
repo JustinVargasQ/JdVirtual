@@ -25,7 +25,11 @@ export default function Checkout() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const url = buildWhatsAppMessage(items, { ...form, shippingMethod: SHIPPING[shipping].label });
+    const url = buildWhatsAppMessage(items, {
+      ...form,
+      shippingMethod: SHIPPING[shipping].label,
+      shippingCost,
+    });
     window.open(url, '_blank', 'noopener');
     clearCart();
     navigate('/confirmacion');
