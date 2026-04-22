@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform, animate, useInVi
 import ProductCard from '../components/ui/ProductCard';
 import FilterBar from '../components/ui/FilterBar';
 import { useProducts, useFeatured, useCategoryPreviews } from '../hooks/useProducts';
+import useGoogleReviews from '../hooks/useGoogleReviews';
 
 /* ─── Slide config ─── */
 const SLIDE_CONFIG = [
@@ -1092,16 +1093,42 @@ const TESTIMONIALS = [
 ];
 
 function TestimonialCard({ t }) {
+  const rating  = t.rating || 5;
+  const rounded = Math.round(rating);
+  const stars   = '★'.repeat(rounded) + '☆'.repeat(5 - rounded);
+  const hasText = Boolean(t.quote && t.quote.trim());
+
   return (
     <div className="bg-white rounded-2xl p-5 border border-cream-200 hover:border-rose-200 hover:shadow-card transition-all duration-300 mb-4">
-      <div className="text-rose-400 text-sm mb-2.5">★★★★★</div>
-      <p className="text-ink-700 text-sm leading-relaxed mb-4">"{t.quote}"</p>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-bold text-ink-900">{t.name}</p>
-          <p className="text-xs text-ink-400">{t.city}</p>
+      <div className="text-rose-400 text-sm mb-2.5 tracking-wider">{stars}</div>
+
+      {hasText ? (
+        <p className="text-ink-700 text-sm leading-relaxed mb-4 line-clamp-6">"{t.quote}"</p>
+      ) : (
+        <div className="mb-4 flex items-center gap-2 py-2">
+          <span className="text-2xl text-rose-400 leading-none">{rating.toFixed(1)}</span>
+          <span className="text-xs text-ink-400 italic">
+            {rating >= 5 ? 'Calificación perfecta ✨' : `Calificó con ${rounded} estrellas`}
+          </span>
         </div>
-        <span className="text-xs font-semibold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full">{t.tag}</span>
+      )}
+
+      <div className="flex items-center gap-3">
+        {t.avatar ? (
+          <img src={t.avatar} alt={t.name} referrerPolicy="no-referrer"
+            className="w-9 h-9 rounded-full object-cover flex-shrink-0 bg-cream-100" />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-500 font-bold flex items-center justify-center text-sm flex-shrink-0">
+            {t.name?.charAt(0) || '?'}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-ink-900 truncate">{t.name}</p>
+          <p className="text-xs text-ink-400 truncate">{t.city}</p>
+        </div>
+        {t.tag && (
+          <span className="text-[10px] font-semibold text-rose-500 bg-rose-50 px-2 py-1 rounded-full flex-shrink-0">{t.tag}</span>
+        )}
       </div>
     </div>
   );
@@ -1127,9 +1154,34 @@ function ScrollColumn({ items, direction = 'up', durationSecs = 34 }) {
 }
 
 function TestimonialsSection() {
-  const col1 = TESTIMONIALS.filter((_, i) => i % 3 === 0);
-  const col2 = TESTIMONIALS.filter((_, i) => i % 3 === 1);
-  const col3 = TESTIMONIALS.filter((_, i) => i % 3 === 2);
+  const { data: googleData } = useGoogleReviews();
+
+  const googleReviews = (googleData?.reviews || []).map((r) => ({
+    quote: r.text,
+    name: r.author,
+    city: r.relativeTime,
+    avatar: r.avatar,
+    rating: r.rating,
+    tag: 'Google',
+  }));
+
+  const hasReal = googleReviews.length >= 1;
+  const items   = hasReal ? googleReviews : TESTIMONIALS;
+
+  const useScrollColumns = items.length >= 3;
+
+  // Distribute items so each column has at least 1 (cycle small sets)
+  const distribute = (offset) => {
+    if (items.length === 0) return [];
+    const out = [];
+    for (let i = 0; i < Math.max(items.length, 3); i++) {
+      out.push(items[(i * 3 + offset) % items.length]);
+    }
+    return out;
+  };
+  const col1 = distribute(0);
+  const col2 = distribute(1);
+  const col3 = distribute(2);
 
   return (
     <section className="bg-cream-50 py-16 sm:py-24 overflow-hidden">
@@ -1142,18 +1194,38 @@ function TestimonialsSection() {
           className="text-center mb-12">
           <span className="section-label">Lo que dicen nuestras clientas</span>
           <h2 className="section-title">
-            Miles de reseñas,{' '}
-            <em className="font-display italic text-rose-500">una sola promesa</em>
+            {hasReal ? (
+              <>
+                Reseñas <em className="font-display italic text-rose-500">verificadas</em>
+              </>
+            ) : (
+              <>
+                Miles de reseñas,{' '}
+                <em className="font-display italic text-rose-500">una sola promesa</em>
+              </>
+            )}
           </h2>
-          <p className="text-ink-500 mt-3 max-w-xl mx-auto text-sm">
-            Productos originales, envío rápido y atención cercana.
-          </p>
+
+          {hasReal && googleData?.rating && (
+            <a href={googleData.url || '#'} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full bg-white border border-cream-200 hover:border-rose-200 transition-colors shadow-sm">
+              <span className="text-rose-400 tracking-wider">{'★'.repeat(Math.round(googleData.rating))}</span>
+              <span className="text-sm font-bold text-ink-900">{googleData.rating.toFixed(1)}</span>
+              <span className="text-xs text-ink-400">· {googleData.total} reseñas en Google</span>
+            </a>
+          )}
+
+          {!hasReal && (
+            <p className="text-ink-500 mt-3 max-w-xl mx-auto text-sm">
+              Productos originales, envío rápido y atención cercana.
+            </p>
+          )}
         </motion.div>
 
         {/* Mobile: horizontal snap scroll */}
         <div className="sm:hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-4 px-4">
           <div className="flex gap-4 w-max pb-2">
-            {TESTIMONIALS.map((t, i) => (
+            {items.map((t, i) => (
               <div key={i} className="w-[80vw] flex-shrink-0 snap-start">
                 <TestimonialCard t={t} />
               </div>
@@ -1161,12 +1233,27 @@ function TestimonialsSection() {
           </div>
         </div>
 
-        {/* Desktop: infinite auto-scroll columns */}
-        <div className="hidden sm:grid sm:grid-cols-3 gap-5">
-          <ScrollColumn items={col1} direction="up"   durationSecs={32} />
-          <ScrollColumn items={col2} direction="down" durationSecs={28} />
-          <ScrollColumn items={col3} direction="up"   durationSecs={38} />
-        </div>
+        {/* Desktop: infinite auto-scroll columns (≥6 items) */}
+        {useScrollColumns ? (
+          <div className="hidden sm:grid sm:grid-cols-3 gap-5">
+            <ScrollColumn items={col1} direction="up"   durationSecs={32} />
+            <ScrollColumn items={col2} direction="down" durationSecs={28} />
+            <ScrollColumn items={col3} direction="up"   durationSecs={38} />
+          </div>
+        ) : (
+          /* Desktop: centered grid when few reviews */
+          <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {items.map((t, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.5 }}>
+                <TestimonialCard t={t} />
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

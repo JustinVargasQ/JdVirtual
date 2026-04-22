@@ -7,7 +7,8 @@ export function buildWhatsAppMessage(items, customer = null) {
   );
   const subtotal     = items.reduce((s, i) => s + i.price * i.qty, 0);
   const shippingCost = Number(customer?.shippingCost) || 0;
-  const total        = subtotal + shippingCost;
+  const discount     = Math.min(Number(customer?.coupon?.discount) || 0, subtotal);
+  const total        = Math.max(0, subtotal - discount) + shippingCost;
 
   const parts = [
     '*★ NUEVO PEDIDO ★*',
@@ -19,6 +20,10 @@ export function buildWhatsAppMessage(items, customer = null) {
     `Subtotal: ${formatCRC(subtotal)}`,
   ];
 
+  if (customer?.coupon?.code) {
+    const tag = customer.coupon.freeShipping ? ' (envío gratis)' : '';
+    parts.push(`Cupón ${customer.coupon.code}${tag}: −${formatCRC(discount)}`);
+  }
   if (customer?.shippingMethod) {
     parts.push(`Envío (${customer.shippingMethod}): ${shippingCost === 0 ? 'Gratis' : formatCRC(shippingCost)}`);
   }

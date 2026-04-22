@@ -7,11 +7,13 @@ import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
 import Confirmation from './pages/Confirmation';
+import Wishlist from './pages/Wishlist';
 import AdminLogin from './pages/admin/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminProductForm from './pages/admin/ProductForm';
 import AdminOrders from './pages/admin/Orders';
+import AdminCoupons from './pages/admin/Coupons';
 import AdminConfig from './pages/admin/Config';
 import useAuthStore from './store/authStore';
 
@@ -41,6 +43,7 @@ export default function App() {
         <Route path="/producto/:slug" element={<StorefrontLayout><ProductDetail /></StorefrontLayout>} />
         <Route path="/checkout" element={<StorefrontLayout><Checkout /></StorefrontLayout>} />
         <Route path="/confirmacion" element={<StorefrontLayout><Confirmation /></StorefrontLayout>} />
+        <Route path="/favoritos" element={<StorefrontLayout><Wishlist /></StorefrontLayout>} />
 
         {/* Admin */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -49,6 +52,7 @@ export default function App() {
           <Route path="productos/nuevo"        element={<AdminProductForm />} />
           <Route path="productos/:id/editar"   element={<AdminProductForm />} />
           <Route path="ordenes"                element={<AdminOrders />} />
+          <Route path="cupones"                element={<AdminCoupons />} />
           <Route path="config"                 element={<AdminConfig />} />
         </Route>
 

@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import useCart from '../hooks/useCart';
 import { formatCRC } from '../lib/currency';
 import { buildWhatsAppMessage } from '../lib/whatsapp';
 import MapAddressPicker from '../components/ui/MapAddressPicker';
+import api from '../lib/api';
 
+const USE_API = import.meta.env.VITE_API_URL;
 const PROVINCES = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
 const SHIPPING = { correos: { label: 'Correos de CR (3-5 días)', price: 2500 }, express: { label: 'Express zona Puntarenas', price: 1500 }, pickup: { label: 'Retiro en El Roble (gratis)', price: 0 } };
 
@@ -14,8 +17,14 @@ export default function Checkout() {
   const [shipping, setShipping] = useState('correos');
   const [form, setForm] = useState({ name: '', phone: '', province: 'Puntarenas', address: '', notes: '', lat: null, lng: null });
 
-  const shippingCost = SHIPPING[shipping].price;
-  const grandTotal = total + shippingCost;
+  const [couponCode,   setCouponCode]   = useState('');
+  const [coupon,       setCoupon]       = useState(null); // { code, type, discount, freeShipping, description }
+  const [couponError,  setCouponError]  = useState('');
+  const [couponLoading,setCouponLoading]= useState(false);
+
+  const shippingCost  = coupon?.freeShipping ? 0 : SHIPPING[shipping].price;
+  const discount      = coupon ? Math.min(coupon.discount || 0, total) : 0;
+  const grandTotal    = Math.max(0, total - discount) + shippingCost;
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -23,12 +32,39 @@ export default function Checkout() {
     setForm((f) => ({ ...f, address, lat, lng }));
   };
 
+  const applyCoupon = async (e) => {
+    e.preventDefault();
+    setCouponError('');
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+    if (!USE_API) { setCouponError('Cupones requieren backend activo.'); return; }
+
+    setCouponLoading(true);
+    try {
+      const { data } = await api.post('/coupons/validate', {
+        code,
+        subtotal: total,
+        shippingCost: SHIPPING[shipping].price,
+      });
+      setCoupon(data);
+      setCouponCode('');
+    } catch (err) {
+      setCouponError(err.response?.data?.error || 'No se pudo aplicar el cupón');
+      setCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => { setCoupon(null); setCouponError(''); };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const url = buildWhatsAppMessage(items, {
       ...form,
       shippingMethod: SHIPPING[shipping].label,
       shippingCost,
+      coupon: coupon ? { code: coupon.code, discount, freeShipping: coupon.freeShipping } : null,
     });
     window.open(url, '_blank', 'noopener');
     clearCart();
@@ -105,7 +141,11 @@ export default function Checkout() {
                   <label key={key} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-colors ${shipping === key ? 'border-rose-400 bg-rose-50' : 'border-cream-200 hover:border-rose-200'}`}>
                     <input type="radio" name="shipping" value={key} checked={shipping === key} onChange={() => setShipping(key)} className="accent-rose-500" />
                     <span className="flex-1 text-sm font-medium text-ink-800">{val.label}</span>
-                    <span className="font-bold text-ink-900">{val.price === 0 ? 'Gratis' : formatCRC(val.price)}</span>
+                    <span className="font-bold text-ink-900">
+                      {coupon?.freeShipping && key !== 'pickup'
+                        ? <><span className="text-ink-300 line-through mr-1 text-xs">{formatCRC(val.price)}</span><span className="text-green-600">Gratis</span></>
+                        : (val.price === 0 ? 'Gratis' : formatCRC(val.price))}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -128,9 +168,72 @@ export default function Checkout() {
                   </div>
                 ))}
               </div>
+
+              {/* Coupon */}
+              <div className="border-t border-cream-200 pt-4 mb-4">
+                <AnimatePresence mode="wait">
+                  {coupon ? (
+                    <motion.div key="applied"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      className="flex items-center justify-between gap-3 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-green-600 flex-shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
+                          <span className="font-mono font-bold text-sm text-green-700 truncate">{coupon.code}</span>
+                        </div>
+                        {coupon.description && (
+                          <p className="text-[11px] text-green-700/70 mt-0.5 truncate">{coupon.description}</p>
+                        )}
+                      </div>
+                      <button type="button" onClick={removeCoupon}
+                        aria-label="Quitar cupón"
+                        className="text-green-700/60 hover:text-red-500 transition-colors flex-shrink-0 p-1">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="input"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                          placeholder="Código de cupón"
+                          className="flex-1 border border-cream-200 rounded-xl px-3 py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 transition-colors font-mono uppercase tracking-wider"
+                        />
+                        <button type="button" onClick={applyCoupon}
+                          disabled={couponLoading || !couponCode.trim()}
+                          className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-ink-900 text-white hover:bg-rose-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                          {couponLoading ? '...' : 'Aplicar'}
+                        </button>
+                      </div>
+                      {couponError && (
+                        <p className="text-[11px] text-red-500 mt-1.5">{couponError}</p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <div className="border-t border-cream-200 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between text-ink-600"><span>Subtotal</span><span>{formatCRC(total)}</span></div>
-                <div className="flex justify-between text-ink-600"><span>Envío</span><span>{shippingCost === 0 ? 'Gratis' : formatCRC(shippingCost)}</span></div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Descuento ({coupon.code})</span>
+                    <span>−{formatCRC(discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-ink-600">
+                  <span>Envío</span>
+                  <span>
+                    {coupon?.freeShipping && SHIPPING[shipping].price > 0
+                      ? <><span className="line-through text-ink-300 mr-1">{formatCRC(SHIPPING[shipping].price)}</span><span className="text-green-600">Gratis</span></>
+                      : (shippingCost === 0 ? 'Gratis' : formatCRC(shippingCost))}
+                  </span>
+                </div>
                 <div className="flex justify-between font-bold text-ink-900 text-base pt-2 border-t border-cream-200">
                   <span>Total</span><span>{formatCRC(grandTotal)}</span>
                 </div>

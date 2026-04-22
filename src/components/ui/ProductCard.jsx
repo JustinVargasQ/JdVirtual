@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import useCart from '../../hooks/useCart';
+import useWishlist from '../../hooks/useWishlist';
 import { formatCRC } from '../../lib/currency';
 
 const StarIcon = ({ filled }) => (
@@ -12,6 +13,11 @@ const StarIcon = ({ filled }) => (
 const CartPlusIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>
+  </svg>
+);
+const HeartIcon = ({ filled }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
   </svg>
 );
 const WaIcon = () => (
@@ -28,11 +34,13 @@ const BADGE_STYLES = {
 
 export default function ProductCard({ product, index = 0 }) {
   const { addItem, openCart } = useCart();
+  const { has, toggle }       = useWishlist();
   const [added, setAdded]     = useState(false);
   const [hovered, setHovered] = useState(false);
 
   const img = product.img || product.images?.[0] || '';
   const discount = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
+  const isFav = has(product);
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -41,6 +49,12 @@ export default function ProductCard({ product, index = 0 }) {
     setAdded(true);
     openCart();
     setTimeout(() => setAdded(false), 1800);
+  };
+
+  const handleFav = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggle(product);
   };
 
   return (
@@ -66,6 +80,21 @@ export default function ProductCard({ product, index = 0 }) {
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
             </div>
           )}
+
+          {/* Wishlist heart — always visible, top right */}
+          <motion.button
+            onClick={handleFav}
+            aria-label={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+            whileTap={{ scale: 0.85 }}
+            animate={isFav ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+            transition={{ duration: 0.35, ease: [0.3, 1, 0.3, 1] }}
+            className={`absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-md shadow-md transition-colors duration-200 z-10 ${
+              isFav
+                ? 'bg-rose-500 text-white hover:bg-rose-600'
+                : 'bg-white/80 text-ink-600 hover:text-rose-500 hover:bg-white'
+            }`}>
+            <HeartIcon filled={isFav} />
+          </motion.button>
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">

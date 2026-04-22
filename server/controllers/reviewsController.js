@@ -28,12 +28,17 @@ async function fetchFromGoogle() {
       author: rev.author_name,
       avatar: rev.profile_photo_url,
       rating: rev.rating,
-      text: rev.text,
+      text: (rev.text || '').trim(),
       relativeTime: rev.relative_time_description,
       time: rev.time,
     })),
   };
 }
+
+exports.refresh = async (req, res, next) => {
+  cache = { data: null, expiresAt: 0 };
+  return exports.get(req, res, next);
+};
 
 exports.get = async (req, res) => {
   if (!KEY || !PLACE_ID) {
