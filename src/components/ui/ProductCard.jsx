@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 import useCart from '../../hooks/useCart';
 import useWishlist from '../../hooks/useWishlist';
 import { formatCRC } from '../../lib/currency';
@@ -37,11 +37,49 @@ export default function ProductCard({ product, index = 0 }) {
   const { has, toggle }       = useWishlist();
   const [added, setAdded]     = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [imgIdx, setImgIdx]   = useState(0);
+  const intervalRef           = useRef(null);
+  const cardRef               = useRef(null);
 
-  const img = product.img || product.images?.[0] || '';
-  const discount  = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
-  const isFav     = has(product);
+  /* ── 3D tilt ── */
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const springX = useSpring(rotateX, { stiffness: 150, damping: 18 });
+  const springY = useSpring(rotateY, { stiffness: 150, damping: 18 });
+
+  const allImages = product.images?.length > 0 ? product.images : (product.img ? [product.img] : []);
+  const currentImg = allImages[imgIdx] || '';
+
+  const discount   = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
+  const isFav      = has(product);
   const outOfStock = product.stock !== undefined && product.stock !== null && product.stock === 0;
+
+  /* cleanup interval on unmount */
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+
+  const handleMouseEnter = () => {
+    setHovered(true);
+    if (allImages.length > 1) {
+      intervalRef.current = setInterval(() => setImgIdx((i) => (i + 1) % allImages.length), 900);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHovered(false);
+    rotateX.set(0);
+    rotateY.set(0);
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    setImgIdx(0);
+  };
+
+  const handleMouseMove = (e) => {
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    rotateX.set(-y * 7);
+    rotateY.set(x * 7);
+  };
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -60,127 +98,164 @@ export default function ProductCard({ product, index = 0 }) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.5, ease: [0.3, 1, 0.3, 1], delay: (index % 4) * 0.07 }}
-    >
-      <Link to={`/producto/${product.slug}`}
-        className="group block bg-white rounded-2xl overflow-hidden border border-cream-200 hover:border-rose-200 hover:shadow-card-hover transition-all duration-500"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}>
+    /* perspective wrapper — needed for 3D tilt to look correct */
+    <div style={{ perspective: '900px' }}>
+      <motion.div
+        ref={cardRef}
+        style={{ rotateX: springX, rotateY: springY, transformStyle: 'preserve-3d' }}
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ duration: 0.5, ease: [0.3, 1, 0.3, 1], delay: (index % 4) * 0.07 }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onMouseMove={handleMouseMove}
+      >
+        <Link to={`/producto/${product.slug}`}
+          className="group block bg-white rounded-2xl overflow-hidden border border-cream-200 hover:border-rose-200 hover:shadow-card-hover transition-all duration-500">
 
-        {/* Image */}
-        <div className="relative overflow-hidden bg-cream-50" style={{ aspectRatio: '1' }}>
-          {img ? (
-            <img src={img} alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-700 ease-snappy group-hover:scale-105"
-              loading="lazy" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-ink-200">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-            </div>
-          )}
-
-          {/* Wishlist heart — always visible, top right */}
-          <motion.button
-            onClick={handleFav}
-            aria-label={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-            whileTap={{ scale: 0.85 }}
-            animate={isFav ? { scale: [1, 1.25, 1] } : { scale: 1 }}
-            transition={{ duration: 0.35, ease: [0.3, 1, 0.3, 1] }}
-            className={`absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-md shadow-md transition-colors duration-200 z-10 ${
-              isFav
-                ? 'bg-rose-500 text-white hover:bg-rose-600'
-                : 'bg-white/80 text-ink-600 hover:text-rose-500 hover:bg-white'
-            }`}>
-            <HeartIcon filled={isFav} />
-          </motion.button>
-
-          {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            {outOfStock ? (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-ink-500 text-white">
-                Agotado
-              </span>
-            ) : (
+          {/* ── Image ── */}
+          <div className="relative overflow-hidden bg-cream-50" style={{ aspectRatio: '1' }}>
+            {currentImg ? (
               <>
-                {product.badge && (
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${BADGE_STYLES[product.badgeType] || BADGE_STYLES['']}`}>
-                    {product.badge}
-                  </span>
-                )}
-                {discount > 0 && (
-                  <span className="text-[10px] font-bold bg-coral text-white px-2.5 py-1 rounded-full">
-                    -{discount}%
-                  </span>
+                <motion.img
+                  key={imgIdx}
+                  src={currentImg}
+                  alt={product.name}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full h-full object-cover transition-transform duration-700 ease-snappy group-hover:scale-105"
+                  loading="lazy"
+                />
+                {/* Image index dots when multiple images */}
+                {allImages.length > 1 && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    {allImages.map((_, i) => (
+                      <span key={i}
+                        className={`rounded-full bg-white transition-all duration-300 shadow-sm ${
+                          i === imgIdx ? 'w-3.5 h-1.5' : 'w-1.5 h-1.5 opacity-60'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 )}
               </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-ink-200">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+                </svg>
+              </div>
             )}
-          </div>
 
-          {/* Action buttons — reveal on hover */}
-          <motion.div
-            initial={false}
-            animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 10 }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute bottom-0 inset-x-0 p-3 flex gap-2">
-            <button onClick={handleAdd} disabled={outOfStock}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg ${
-                outOfStock ? 'bg-ink-200 text-ink-400 cursor-not-allowed' :
-                added ? 'bg-green-500 text-white' : 'bg-white text-ink-900 hover:bg-ink-900 hover:text-white'
+            {/* Wishlist heart */}
+            <motion.button
+              onClick={handleFav}
+              aria-label={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              whileTap={{ scale: 0.82 }}
+              animate={isFav ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+              transition={{ duration: 0.38, ease: [0.3, 1, 0.3, 1] }}
+              className={`absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-md shadow-md transition-colors duration-200 z-10 ${
+                isFav
+                  ? 'bg-rose-500 text-white hover:bg-rose-600'
+                  : 'bg-white/80 text-ink-600 hover:text-rose-500 hover:bg-white'
               }`}>
-              <CartPlusIcon />
-              {outOfStock ? 'Agotado' : added ? '¡Agregado!' : 'Al carrito'}
-            </button>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`https://wa.me/50688045100?text=${encodeURIComponent(`Hola! Me interesa: ${product.name} a ${formatCRC(product.price)}`)}`, '_blank', 'noopener'); }}
-              className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-lg transition-colors">
-              <WaIcon />
-            </button>
-          </motion.div>
-        </div>
+              <HeartIcon filled={isFav} />
+            </motion.button>
 
-        {/* Info */}
-        <div className="p-4">
-          <p className="text-[11px] text-ink-400 font-semibold uppercase tracking-widest mb-1">{product.brand || 'JD Virtual'}</p>
-          <h3 className="text-sm font-semibold text-ink-900 leading-snug mb-2.5 line-clamp-2 group-hover:text-rose-500 transition-colors duration-200">
-            {product.name}
-          </h3>
-
-          {/* Stars */}
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex gap-0.5">
-              {[1,2,3,4,5].map((s) => <StarIcon key={s} filled={s <= Math.round(product.rating || 5)} />)}
+            {/* Badges */}
+            <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+              {outOfStock ? (
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-ink-500 text-white">
+                  Agotado
+                </span>
+              ) : (
+                <>
+                  {product.badge && (
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${BADGE_STYLES[product.badgeType] || BADGE_STYLES['']}`}>
+                      {product.badge}
+                    </span>
+                  )}
+                  {discount > 0 && (
+                    <motion.span
+                      className="text-[10px] font-bold text-white px-2.5 py-1 rounded-full shadow-sm"
+                      style={{ background: 'linear-gradient(135deg, #ef4444 0%, #f43f5e 100%)' }}
+                      animate={{ scale: [1, 1.07, 1] }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}>
+                      -{discount}%
+                    </motion.span>
+                  )}
+                </>
+              )}
             </div>
-            {product.reviews > 0 && (
-              <span className="text-[11px] text-ink-400">({product.reviews})</span>
-            )}
+
+            {/* Action buttons — reveal on hover */}
+            <motion.div
+              initial={false}
+              animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 10 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute bottom-0 inset-x-0 p-3 flex gap-2">
+              <button onClick={handleAdd} disabled={outOfStock}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg ${
+                  outOfStock ? 'bg-ink-200 text-ink-400 cursor-not-allowed' :
+                  added ? 'bg-green-500 text-white scale-95' : 'bg-white text-ink-900 hover:bg-ink-900 hover:text-white'
+                }`}>
+                <CartPlusIcon />
+                {outOfStock ? 'Agotado' : added ? '¡Agregado!' : 'Al carrito'}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open(`https://wa.me/50688045100?text=${encodeURIComponent(`Hola! Me interesa: ${product.name} a ${formatCRC(product.price)}`)}`, '_blank', 'noopener');
+                }}
+                className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-lg transition-colors">
+                <WaIcon />
+              </button>
+            </motion.div>
           </div>
 
-          {/* Urgency / social proof */}
-          {product.stock !== undefined && product.stock > 0 && product.stock <= 5 ? (
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
-              <span className="text-[11px] font-semibold text-amber-600">¡Solo quedan {product.stock}!</span>
-            </div>
-          ) : product.reviews >= 30 ? (
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-[10px]">🔥</span>
-              <span className="text-[11px] font-semibold text-rose-500">Muy buscado</span>
-            </div>
-          ) : null}
+          {/* ── Info ── */}
+          <div className="p-4">
+            <p className="text-[11px] text-ink-400 font-semibold uppercase tracking-widest mb-1">{product.brand || 'JD Virtual'}</p>
+            <h3 className="text-sm font-semibold text-ink-900 leading-snug mb-2.5 line-clamp-2 group-hover:text-rose-500 transition-colors duration-200">
+              {product.name}
+            </h3>
 
-          {/* Price */}
-          <div className="flex items-baseline gap-2">
-            <span className="font-bold text-ink-900 text-base">{formatCRC(product.price)}</span>
-            {product.oldPrice && (
-              <span className="text-xs text-ink-300 line-through">{formatCRC(product.oldPrice)}</span>
-            )}
+            {/* Stars */}
+            <div className="flex items-center gap-1 mb-2">
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map((s) => <StarIcon key={s} filled={s <= Math.round(product.rating || 5)} />)}
+              </div>
+              {product.reviews > 0 && (
+                <span className="text-[11px] text-ink-400">({product.reviews})</span>
+              )}
+            </div>
+
+            {/* Urgency / social proof */}
+            {product.stock !== undefined && product.stock > 0 && product.stock <= 5 ? (
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+                <span className="text-[11px] font-semibold text-amber-600">¡Solo quedan {product.stock}!</span>
+              </div>
+            ) : product.reviews >= 30 ? (
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-[10px]">🔥</span>
+                <span className="text-[11px] font-semibold text-rose-500">Muy buscado</span>
+              </div>
+            ) : null}
+
+            {/* Price */}
+            <div className="flex items-baseline gap-2">
+              <span className="font-bold text-ink-900 text-base">{formatCRC(product.price)}</span>
+              {product.oldPrice && (
+                <span className="text-xs text-ink-300 line-through">{formatCRC(product.oldPrice)}</span>
+              )}
+            </div>
           </div>
-        </div>
-      </Link>
-    </motion.div>
+        </Link>
+      </motion.div>
+    </div>
   );
 }
