@@ -7,6 +7,7 @@ router.post('/validate', ctrl.validate);
 
 /* Admin */
 router.get('/admin/all',      requireAuth, ctrl.adminGetAll);
+router.get('/admin/:id/uses', requireAuth, ctrl.getUses);
 router.post('/',              requireAuth, ctrl.create);
 router.put('/:id',            requireAuth, ctrl.update);
 router.delete('/:id',         requireAuth, ctrl.remove);

@@ -1,4 +1,5 @@
 const Coupon = require('../models/Coupon');
+const Order  = require('../models/Order');
 
 const normalize = (code) => String(code || '').trim().toUpperCase();
 
@@ -69,6 +70,19 @@ exports.remove = async (req, res, next) => {
     const coupon = await Coupon.findByIdAndDelete(req.params.id);
     if (!coupon) return res.status(404).json({ error: 'Cupón no encontrado' });
     res.json({ message: 'Cupón eliminado' });
+  } catch (err) { next(err); }
+};
+
+exports.getUses = async (req, res, next) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    if (!coupon) return res.status(404).json({ error: 'Cupón no encontrado' });
+
+    const orders = await Order.find({ 'coupon.code': coupon.code })
+      .select('orderNumber customer.name customer.phone coupon subtotal discount shippingCost total createdAt status')
+      .sort({ createdAt: -1 });
+
+    res.json({ code: coupon.code, orders });
   } catch (err) { next(err); }
 };
 

@@ -1,7 +1,7 @@
 import { formatCRC } from './currency';
 import { WHATSAPP_NUMBER } from '../data/products';
 
-export function buildWhatsAppMessage(items, customer = null) {
+export function buildWhatsAppMessage(items, customer = null, orderNumber = null) {
   const lines = items.map(
     (i) => `  • ${i.name} × ${i.qty}  —  ${formatCRC(i.price * i.qty)}`
   );
@@ -12,6 +12,7 @@ export function buildWhatsAppMessage(items, customer = null) {
 
   const parts = [
     '*★ NUEVO PEDIDO ★*',
+    orderNumber ? `*Pedido #${orderNumber}*` : '',
     '━━━━━━━━━━━━━━━━━━',
     '',
     '*PRODUCTOS*',
@@ -54,8 +55,11 @@ export function buildWhatsAppMessage(items, customer = null) {
     parts.push('', '*NOTAS*', customer.notes.trim());
   }
 
+  if (customer?.paymentMethod) {
+    parts.push('', `*PAGO*: ${customer.paymentMethod}`);
+  }
+
   parts.push('', '━━━━━━━━━━━━━━━━━━');
-  parts.push('', '¿Cómo coordinamos el pago?');
 
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(parts.join('\n'))}`;
 }

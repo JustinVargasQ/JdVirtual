@@ -100,7 +100,7 @@ export function useBrands() {
   return brands;
 }
 
-/* ── useFeatured ── */
+/* ── useFeatured — top sellers from orders, fallback to badge products ── */
 export function useFeatured(limit = 4) {
   const [products, setProducts] = useState([]);
 
@@ -109,7 +109,7 @@ export function useFeatured(limit = 4) {
       setProducts(normalizeLocal(LOCAL_PRODUCTS.filter((p) => p.badge).slice(0, limit)));
       return;
     }
-    api.get('/products', { params: { featured: true, limit } })
+    api.get('/products/top-sellers', { params: { limit } })
       .then(({ data }) => setProducts((data.products || []).map(normalize)))
       .catch(() => setProducts([]));
   }, [limit]);

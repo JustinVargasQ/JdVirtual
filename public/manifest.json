@@ -1,0 +1,46 @@
+{
+  "name": "JD Virtual Store",
+  "short_name": "JD Virtual",
+  "description": "Maquillaje y skincare de marcas auténticas. Envíos a todo Costa Rica.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F5",
+  "theme_color": "#B85F72",
+  "orientation": "portrait-primary",
+  "lang": "es-CR",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/public/imgs/makeup.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    }
+  ],
+  "categories": ["shopping", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Ver productos",
+      "url": "/?cat=todos",
+      "description": "Ver todo el catálogo"
+    },
+    {
+      "name": "Rastrear pedido",
+      "url": "/pedido",
+      "description": "Ver estado de mi pedido"
+    }
+  ]
+}

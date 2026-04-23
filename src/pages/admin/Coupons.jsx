@@ -14,11 +14,13 @@ const TYPE_LABELS = {
 
 const emptyForm = { code: '', type: 'percent', value: 10, description: '', minOrder: 0, maxUses: 0, expiresAt: '' };
 
-function toIsoDate(d) {
+function toIsoDateTime(d) {
   if (!d) return '';
   const dt = new Date(d);
   if (isNaN(dt)) return '';
-  return dt.toISOString().slice(0, 10);
+  // datetime-local needs YYYY-MM-DDTHH:MM in local time
+  const offset = dt.getTimezoneOffset() * 60000;
+  return new Date(dt - offset).toISOString().slice(0, 16);
 }
 
 export default function AdminCoupons() {
@@ -28,6 +30,8 @@ export default function AdminCoupons() {
   const [editing, setEditing]   = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [usesModal, setUsesModal] = useState(null); // { code, orders }
+  const [usesLoading, setUsesLoading] = useState(false);
   const toast      = useToastStore();
   const askConfirm = useToastStore((s) => s.askConfirm);
 
@@ -59,7 +63,7 @@ export default function AdminCoupons() {
       description: c.description || '',
       minOrder: c.minOrder || 0,
       maxUses: c.maxUses || 0,
-      expiresAt: toIsoDate(c.expiresAt),
+      expiresAt: toIsoDateTime(c.expiresAt),
     });
     setShowForm(true);
   };
@@ -105,6 +109,17 @@ export default function AdminCoupons() {
     } catch (err) {
       toast.error(err.response?.data?.error || 'No se pudo cambiar el estado');
     }
+  };
+
+  const openUses = async (c) => {
+    setUsesLoading(true);
+    setUsesModal({ code: c.code, orders: [] });
+    try {
+      const { data } = await api.get(`/coupons/admin/${c._id}/uses`);
+      setUsesModal({ code: data.code, orders: data.orders });
+    } catch {
+      setUsesModal({ code: c.code, orders: [] });
+    } finally { setUsesLoading(false); }
   };
 
   const remove = async (c) => {
@@ -191,6 +206,10 @@ export default function AdminCoupons() {
                   </div>
 
                   <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button onClick={() => openUses(c)} title="Ver usos"
+                      className="p-2 text-ink-400 hover:text-purple-500 hover:bg-purple-50 rounded-lg transition-colors">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </button>
                     <button onClick={() => toggle(c._id)} title={c.isActive ? 'Desactivar' : 'Activar'}
                       className={`p-2 rounded-lg transition-colors ${c.isActive ? 'text-green-600 hover:bg-green-50' : 'text-ink-400 hover:bg-ink-100'}`}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={c.isActive ? 'M20 6 9 17l-5-5' : 'M18 6 6 18M6 6l12 12'}/></svg>
@@ -217,7 +236,7 @@ export default function AdminCoupons() {
                   </div>
                   <div>
                     <p className="text-ink-400 uppercase tracking-wider font-semibold">Vence</p>
-                    <p className="text-ink-900 font-bold mt-0.5">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('es-CR', { day: '2-digit', month: 'short' }) : '—'}</p>
+                    <p className="text-ink-900 font-bold mt-0.5">{c.expiresAt ? new Date(c.expiresAt).toLocaleString('es-CR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                   </div>
                 </div>
               </div>
@@ -225,6 +244,58 @@ export default function AdminCoupons() {
           })}
         </div>
       )}
+
+      {/* Modal usos */}
+      <AnimatePresence>
+        {usesModal && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setUsesModal(null)}
+            className="fixed inset-0 z-50 bg-ink-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="bg-white rounded-2xl shadow-modal w-full max-w-lg max-h-[80vh] flex flex-col">
+              <div className="p-5 border-b border-cream-100 flex items-center justify-between flex-shrink-0">
+                <div>
+                  <h3 className="font-display text-lg font-bold text-ink-900">Usos del cupón <span className="font-mono text-rose-500">{usesModal.code}</span></h3>
+                  <p className="text-xs text-ink-400 mt-0.5">{usesLoading ? 'Cargando...' : `${usesModal.orders.length} pedido${usesModal.orders.length !== 1 ? 's' : ''}`}</p>
+                </div>
+                <button onClick={() => setUsesModal(null)} className="p-1.5 text-ink-400 hover:text-ink-900 transition-colors">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 p-4">
+                {usesLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-cream-50 rounded-xl animate-pulse" />)}
+                  </div>
+                ) : usesModal.orders.length === 0 ? (
+                  <div className="text-center py-10 text-ink-400 text-sm">Nadie ha usado este cupón todavía.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {usesModal.orders.map((o) => (
+                      <div key={o._id} className="bg-cream-50 rounded-xl p-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-ink-900 truncate">{o.customer?.name}</p>
+                          <p className="text-xs text-ink-400">{o.customer?.phone} · #{o.orderNumber}</p>
+                          <p className="text-xs text-ink-400">{new Date(o.createdAt).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-ink-900">{formatCRC(o.total)}</p>
+                          <p className="text-xs text-green-600">−{formatCRC(o.discount || o.coupon?.discount || 0)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal form */}
       <AnimatePresence>
@@ -316,7 +387,7 @@ export default function AdminCoupons() {
 
                 <div>
                   <label className="block text-xs font-bold text-ink-500 uppercase tracking-wide mb-1.5">Fecha de vencimiento</label>
-                  <input type="date" value={form.expiresAt}
+                  <input type="datetime-local" value={form.expiresAt}
                     onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))}
                     className={inputCls} />
                   <p className="text-[11px] text-ink-400 mt-1">Dejalo vacío si no vence.</p>

@@ -1,27 +1,78 @@
-const Order = require('../models/Order');
+const Order    = require('../models/Order');
+const Coupon   = require('../models/Coupon');
+const Product  = require('../models/Product');
+const Settings = require('../models/Settings');
+const { broadcast } = require('../lib/sse');
+const { sendOrderNotification, sendCustomerConfirmation, sendCustomerStatusUpdate } = require('../lib/mailer');
 
 /* ---------- Public ---------- */
 
 exports.create = async (req, res, next) => {
   try {
-    const { customer, items, subtotal, shippingCost = 0, shippingMethod = 'correos' } = req.body;
+    const {
+      customer,
+      items,
+      subtotal,
+      shippingCost = 0,
+      shippingMethod = 'correos',
+      coupon: couponData = null,
+    } = req.body;
 
     if (!customer || !items?.length) {
       return res.status(400).json({ error: 'Datos del pedido incompletos' });
     }
 
+    const discount = Number(couponData?.discount) || 0;
+    const total    = Math.max(0, subtotal - discount) + shippingCost;
+
     const order = await Order.create({
       customer,
       items,
       subtotal,
+      discount,
+      coupon: couponData?.code
+        ? { code: couponData.code, discount, freeShipping: Boolean(couponData.freeShipping) }
+        : undefined,
       shippingCost,
-      total: subtotal + shippingCost,
+      total,
       shippingMethod,
       whatsappSent: true,
     });
 
+    // Decrement stock for each item (only if stock is tracked, never below 0)
+    await Promise.all(
+      items.map((item) =>
+        item.productId
+          ? Product.findOneAndUpdate(
+              { _id: item.productId, stock: { $gt: 0 } },
+              { $inc: { stock: -Math.abs(item.qty) } }
+            )
+          : null
+      )
+    );
+
+    // Increment coupon usage after order is saved
+    if (couponData?.code) {
+      await Coupon.findOneAndUpdate(
+        { code: String(couponData.code).toUpperCase() },
+        { $inc: { usedCount: 1 } }
+      );
+    }
+
+    broadcast('new-order', { orderNumber: order.orderNumber, customer: customer.name });
+
+    // Emails sin bloquear la respuesta
+    Settings.findOne({ key: 'main' })
+      .then((s) => { if (s?.notificationEmail) sendOrderNotification(order, s.notificationEmail); })
+      .catch(() => {});
+
+    sendCustomerConfirmation(order).catch(() => {});
+
     res.status(201).json({ orderNumber: order.orderNumber, id: order._id });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('❌ create order error:', err.name, err.message, JSON.stringify(err.errors || ''));
+    next(err);
+  }
 };
 
 exports.getByNumber = async (req, res, next) => {
@@ -74,7 +125,94 @@ exports.updateStatus = async (req, res, next) => {
 
     const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true });
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+    sendCustomerStatusUpdate(order, status).catch(() => {});
+
     res.json(order);
+  } catch (err) { next(err); }
+};
+
+exports.chart = async (req, res, next) => {
+  try {
+    const now   = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Build array of last 14 days so we can compare this week vs prev week
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (13 - i));
+      return d;
+    });
+
+    const from = days[0];
+    const to   = new Date(today); to.setDate(to.getDate() + 1);
+
+    const rows = await Order.aggregate([
+      { $match: { createdAt: { $gte: from, $lt: to }, status: { $ne: 'cancelado' } } },
+      {
+        $group: {
+          _id:      { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: '-06:00' } },
+          revenue:  { $sum: '$total' },
+          orders:   { $sum: 1 },
+        },
+      },
+    ]);
+
+    const map = Object.fromEntries(rows.map((r) => [r._id, { revenue: r.revenue, orders: r.orders }]));
+
+    const result = days.map((d) => {
+      const key = d.toISOString().slice(0, 10);
+      return { date: key, revenue: map[key]?.revenue || 0, orders: map[key]?.orders || 0 };
+    });
+
+    res.json(result);
+  } catch (err) { next(err); }
+};
+
+exports.topProducts = async (req, res, next) => {
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    const rows = await Order.aggregate([
+      { $match: { createdAt: { $gte: since }, status: { $ne: 'cancelado' } } },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id:      '$items.name',
+          units:    { $sum: '$items.qty' },
+          revenue:  { $sum: { $multiply: ['$items.price', '$items.qty'] } },
+        },
+      },
+      { $sort: { units: -1 } },
+      { $limit: 5 },
+    ]);
+
+    res.json(rows.map((r) => ({ name: r._id, units: r.units, revenue: r.revenue })));
+  } catch (err) { next(err); }
+};
+
+exports.bulkUpdateStatus = async (req, res, next) => {
+  try {
+    const { ids, status } = req.body;
+    const allowed = ['pendiente', 'confirmado', 'preparando', 'enviado', 'entregado', 'cancelado'];
+    if (!allowed.includes(status) || !Array.isArray(ids) || !ids.length) {
+      return res.status(400).json({ error: 'Datos inválidos' });
+    }
+    const result = await Order.updateMany({ _id: { $in: ids } }, { status });
+    res.json({ updated: result.modifiedCount });
+  } catch (err) { next(err); }
+};
+
+exports.updateNotes = async (req, res, next) => {
+  try {
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { internalNotes: req.body.notes ?? '' },
+      { new: true }
+    );
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+    res.json({ internalNotes: order.internalNotes });
   } catch (err) { next(err); }
 };
 

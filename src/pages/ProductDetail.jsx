@@ -51,17 +51,185 @@ function getDeliveryRange() {
   return `${fmt(from)} - ${fmt(to)}`;
 }
 
+/* ── Review stars interactive ── */
+function StarPicker({ value, onChange }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1,2,3,4,5].map((s) => (
+        <button key={s} type="button"
+          onMouseEnter={() => setHover(s)} onMouseLeave={() => setHover(0)}
+          onClick={() => onChange(s)}
+          className="transition-transform hover:scale-110">
+          <svg width="22" height="22" viewBox="0 0 24 24"
+            fill={(hover || value) >= s ? 'currentColor' : 'none'}
+            stroke="currentColor" strokeWidth="2"
+            className={(hover || value) >= s ? 'text-amber-400' : 'text-ink-200'}>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── Reviews section ── */
+function ReviewsSection({ product }) {
+  const [reviews, setReviews]       = useState([]);
+  const [loadingR, setLoadingR]     = useState(true);
+  const [name, setName]             = useState('');
+  const [rating, setRating]         = useState(0);
+  const [comment, setComment]       = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted]   = useState(false);
+
+  useEffect(() => {
+    const pid = product?._id || product?.id;
+    if (!pid || !import.meta.env.VITE_API_URL) { setLoadingR(false); return; }
+    import('../lib/api').then(({ default: api }) =>
+      api.get(`/product-reviews/${pid}`)
+        .then(({ data }) => setReviews(data))
+        .catch(() => {})
+        .finally(() => setLoadingR(false))
+    );
+  }, [product]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !rating) return;
+    setSubmitting(true);
+    try {
+      const pid = product?._id || product?.id;
+      const { default: api } = await import('../lib/api');
+      await api.post('/product-reviews', { productId: pid, authorName: name, rating, comment });
+      setSubmitted(true);
+    } catch { setSubmitted(true); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <section className="mt-20 border-t border-cream-100">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <h2 className="font-display text-2xl font-semibold text-ink-900 mb-8">
+          Reseñas de clientes
+          {reviews.length > 0 && <span className="text-base font-normal text-ink-400 ml-2">({reviews.length})</span>}
+        </h2>
+
+        <div className="grid lg:grid-cols-2 gap-10">
+          {/* Review list */}
+          <div>
+            {loadingR ? (
+              <div className="space-y-3">
+                {[1,2].map((i) => <div key={i} className="h-20 bg-cream-50 rounded-2xl animate-pulse" />)}
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="bg-cream-50 rounded-2xl p-8 text-center">
+                <div className="text-2xl mb-2">⭐</div>
+                <p className="text-sm text-ink-400">Sé el primero en dejar una reseña.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map((r) => (
+                  <div key={r._id} className="bg-white border border-cream-100 rounded-2xl p-5 shadow-card">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 font-bold text-xs flex-shrink-0">
+                        {r.authorName?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-ink-900 text-sm">{r.authorName}</p>
+                        <div className="flex gap-0.5">
+                          {[1,2,3,4,5].map((s) => (
+                            <svg key={s} width="12" height="12" viewBox="0 0 24 24"
+                              fill={s <= r.rating ? 'currentColor' : 'none'}
+                              stroke="currentColor" strokeWidth="2"
+                              className={s <= r.rating ? 'text-amber-400' : 'text-ink-200'}>
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                          ))}
+                        </div>
+                      </div>
+                      <span className="ml-auto text-xs text-ink-400">
+                        {new Date(r.createdAt).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    {r.comment && <p className="text-sm text-ink-700 leading-relaxed">{r.comment}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Submit form */}
+          <div className="bg-cream-50 rounded-2xl p-6 h-fit">
+            <h3 className="font-semibold text-ink-900 mb-4">Dejar una reseña</h3>
+            {submitted ? (
+              <div className="text-center py-6">
+                <div className="text-3xl mb-2">🎉</div>
+                <p className="font-semibold text-ink-900">¡Gracias por tu reseña!</p>
+                <p className="text-sm text-ink-400 mt-1">Será publicada después de revisión.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-ink-500 uppercase tracking-widest mb-1.5 block">Tu nombre</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)} required
+                    placeholder="Nombre o apodo"
+                    className="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-rose-400 transition-colors bg-white" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-ink-500 uppercase tracking-widest mb-1.5 block">Calificación</label>
+                  <StarPicker value={rating} onChange={setRating} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-ink-500 uppercase tracking-widest mb-1.5 block">Comentario (opcional)</label>
+                  <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3}
+                    placeholder="¿Qué te pareció el producto?"
+                    className="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-rose-400 transition-colors resize-none bg-white" />
+                </div>
+                <button type="submit" disabled={submitting || !name.trim() || !rating}
+                  className="w-full py-3 rounded-xl font-semibold text-sm bg-rose-500 hover:bg-rose-600 text-white transition-colors disabled:opacity-50">
+                  {submitting ? 'Enviando...' : 'Enviar reseña'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ProductDetail() {
   const { slug } = useParams();
   const { product, loading } = useProduct(slug);
   const { addItem, openCart } = useCart();
   const { openOrder } = useWhatsApp();
-  const [qty, setQty]         = useState(1);
-  const [added, setAdded]     = useState(false);
-  const [activeImg, setActiveImg] = useState(0);
-  const [zoomed, setZoomed]   = useState(false);
+  const [qty, setQty]               = useState(1);
+  const [added, setAdded]           = useState(false);
+  const [activeImg, setActiveImg]   = useState(0);
+  const [zoomed, setZoomed]         = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState({});
+  const [restockPhone, setRestockPhone]         = useState('');
+  const [restockSent, setRestockSent]           = useState(false);
+  const [restockLoading, setRestockLoading]     = useState(false);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [slug]);
+
+  useEffect(() => {
+    if (!product) return;
+    const prev = document.title;
+    document.title = `${product.name} — ${product.brand} | JD Virtual Store`;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'description'); document.head.appendChild(meta); }
+    const prevContent = meta.getAttribute('content');
+    meta.setAttribute('content', product.description
+      ? product.description.slice(0, 155)
+      : `${product.name} de ${product.brand}. Compra online en JD Virtual Store Costa Rica.`);
+    return () => {
+      document.title = prev;
+      if (meta) meta.setAttribute('content', prevContent || '');
+    };
+  }, [product]);
 
   const cat = product?.cat || 'todos';
   const { products: related } = useProducts({ cat });
@@ -99,6 +267,33 @@ export default function ProductDetail() {
   const handleBuyWa = () => {
     addItem(product, qty);
     openOrder();
+  };
+
+  const handleRestock = async () => {
+    if (!restockPhone.trim()) return;
+    setRestockLoading(true);
+    try {
+      const USE_API = import.meta.env.VITE_API_URL;
+      if (USE_API) {
+        const { default: api } = await import('../lib/api');
+        await api.post('/restock', { productId: product.id || product._id, phone: restockPhone.trim() });
+      }
+      setRestockSent(true);
+    } catch { setRestockSent(true); }
+    finally { setRestockLoading(false); }
+  };
+
+  const shareWa = () => {
+    const url = window.location.href;
+    window.open(`https://wa.me/?text=${encodeURIComponent(`Mira este producto en JD Virtual: ${product.name} - ${url}`)}`, '_blank');
+  };
+
+  const shareLink = () => {
+    if (navigator.share) {
+      navigator.share({ title: product.name, url: window.location.href });
+    } else {
+      navigator.clipboard?.writeText(window.location.href);
+    }
   };
 
   return (
@@ -226,6 +421,51 @@ export default function ProductDetail() {
               </ul>
             )}
 
+            {/* Variants */}
+            {product.variants?.length > 0 && (
+              <div className="space-y-4 mb-5">
+                {product.variants.map((v) => (
+                  <div key={v.name}>
+                    <p className="text-xs font-bold text-ink-500 uppercase tracking-widest mb-2">
+                      {v.name}: <span className="text-rose-500 normal-case font-semibold">{selectedVariants[v.name] || 'Seleccionar'}</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {v.options.map((opt) => (
+                        <button key={opt} onClick={() => setSelectedVariants((s) => ({ ...s, [v.name]: opt }))}
+                          className={`px-3.5 py-1.5 rounded-full text-sm border-2 font-medium transition-all ${
+                            selectedVariants[v.name] === opt
+                              ? 'border-rose-500 bg-rose-50 text-rose-700'
+                              : 'border-cream-200 text-ink-700 hover:border-rose-300'
+                          }`}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Out of stock — restock form */}
+            {product.stock === 0 && (
+              <div className="mb-5 bg-cream-50 border border-cream-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-ink-700 mb-3">Avisame cuando vuelva a haber stock</p>
+                {restockSent ? (
+                  <p className="text-sm text-green-600 font-medium">Listo! Te avisamos por WhatsApp cuando este disponible.</p>
+                ) : (
+                  <div className="flex gap-2">
+                    <input value={restockPhone} onChange={(e) => setRestockPhone(e.target.value)}
+                      placeholder="Tu WhatsApp (ej: 8804-5100)"
+                      className="flex-1 border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-rose-400 transition-colors" />
+                    <button onClick={handleRestock} disabled={restockLoading || !restockPhone.trim()}
+                      className="px-4 py-2.5 rounded-xl text-sm font-bold bg-ink-900 text-white hover:bg-rose-500 transition-colors disabled:opacity-50">
+                      {restockLoading ? '...' : 'Avisar'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Qty + CTA */}
             <div className="flex items-center gap-3 mb-4">
               <div className="flex items-center border border-cream-200 rounded-xl overflow-hidden bg-cream-50">
@@ -245,6 +485,21 @@ export default function ProductDetail() {
               <button onClick={handleBuyWa}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1db954] active:scale-[0.98] text-white font-semibold text-sm py-3.5 rounded-xl transition-all duration-200">
                 <WaIcon /> Comprar por WhatsApp
+              </button>
+            </div>
+
+            {/* Share */}
+            <div className="flex items-center gap-2 mb-5">
+              <span className="text-xs text-ink-400 font-medium">Compartir:</span>
+              <button onClick={shareWa}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors border border-green-200">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                WhatsApp
+              </button>
+              <button onClick={shareLink}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-cream-100 text-ink-600 hover:bg-cream-200 transition-colors border border-cream-200">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Copiar link
               </button>
             </div>
 
@@ -280,6 +535,9 @@ export default function ProductDetail() {
           </div>
         </section>
       )}
+
+      {/* ── Reviews ── */}
+      <ReviewsSection product={product} />
 
       {/* ── Zoom lightbox ── */}
       {zoomed && (

@@ -33,8 +33,86 @@ function StatusSelect({ value, onChange }) {
   );
 }
 
+/* ── Print order ── */
+function printOrder(order) {
+  const fmt = (n) => `₡${Number(n || 0).toLocaleString('es-CR')}`;
+  const date = new Date(order.createdAt).toLocaleString('es-CR', {
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  const rows = (order.items || []).map((i) =>
+    `<tr>
+      <td style="padding:8px 4px;border-bottom:1px solid #eee">${i.name}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #eee;text-align:center">${i.qty}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #eee;text-align:right">${fmt(i.price)}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #eee;text-align:right;font-weight:600">${fmt(i.price * i.qty)}</td>
+    </tr>`
+  ).join('');
+
+  const w = window.open('', '_blank', 'width=780,height=700');
+  w.document.write(`<!DOCTYPE html><html lang="es"><head>
+    <meta charset="utf-8">
+    <title>Orden ${order.orderNumber}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;color:#111;padding:32px;font-size:14px}
+      .header{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #B85F72}
+      .order-num{font-size:26px;font-weight:bold;color:#B85F72;letter-spacing:1px}
+      .date{color:#666;font-size:13px;margin-top:4px}
+      .section-title{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:8px;margin-top:20px}
+      .info-box{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:14px}
+      table{width:100%;border-collapse:collapse;margin-top:8px}
+      th{background:#f5f0f0;padding:8px 4px;text-align:left;font-size:11px;text-transform:uppercase;color:#888}
+      th:last-child,th:nth-child(3),th:nth-child(2){text-align:right}
+      th:nth-child(2){text-align:center}
+      .totals{margin-top:16px;border-top:2px solid #eee;padding-top:12px}
+      .total-row{display:flex;justify-content:space-between;padding:4px 0;color:#666}
+      .grand-total{font-size:18px;font-weight:bold;color:#111;border-top:1px solid #eee;margin-top:8px;padding-top:8px}
+      .footer{text-align:center;color:#aaa;font-size:11px;margin-top:32px;padding-top:16px;border-top:1px solid #eee}
+      .print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#B85F72;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer}
+      @media print{.print-btn{display:none!important}body{padding:16px}}
+    </style>
+  </head><body>
+    <div class="header">
+      <div class="order-num">${order.orderNumber}</div>
+      <div class="date">${date}</div>
+      <div style="margin-top:8px">Estado: <strong>${STATUS_CONFIG[order.status]?.label || order.status}</strong></div>
+    </div>
+
+    <div class="section-title">Cliente</div>
+    <div class="info-box">
+      <strong>${order.customer?.name}</strong><br>
+      Tel: ${order.customer?.phone}<br>
+      ${order.customer?.address}, ${order.customer?.province}<br>
+      Envío: ${order.shippingMethod || 'correos'}
+      ${order.customer?.notes ? `<br><em>Nota: ${order.customer.notes}</em>` : ''}
+    </div>
+
+    <div class="section-title">Productos</div>
+    <table>
+      <thead><tr>
+        <th>Producto</th>
+        <th style="text-align:center">Cant.</th>
+        <th style="text-align:right">Precio</th>
+        <th style="text-align:right">Total</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="totals">
+      <div class="total-row"><span>Subtotal</span><span>${fmt(order.subtotal)}</span></div>
+      <div class="total-row"><span>Envío</span><span>${order.shippingCost ? fmt(order.shippingCost) : 'Gratis'}</span></div>
+      ${order.discount ? `<div class="total-row"><span>Descuento ${order.coupon?.code ? '(' + order.coupon.code + ')' : ''}</span><span>-${fmt(order.discount)}</span></div>` : ''}
+      <div class="total-row grand-total"><span>TOTAL</span><span>${fmt(order.total)}</span></div>
+    </div>
+
+    <div class="footer">JD Virtual Store &nbsp;·&nbsp; Impreso el ${new Date().toLocaleDateString('es-CR')}</div>
+    <button class="print-btn" onclick="window.print()">Imprimir orden</button>
+  </body></html>`);
+  w.document.close();
+}
+
 /* ── Order detail drawer ── */
-function OrderDrawer({ order, onClose, onUpdateStatus }) {
+function OrderDrawer({ order, onClose, onUpdateStatus, onUpdateNotes, onSearchPhone }) {
   useEffect(() => {
     const onEsc = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onEsc);
@@ -44,6 +122,9 @@ function OrderDrawer({ order, onClose, onUpdateStatus }) {
       document.body.style.overflow = '';
     };
   }, [onClose]);
+
+  const [notes, setNotes] = useState(order.internalNotes || '');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   if (!order) return null;
 
@@ -92,6 +173,13 @@ function OrderDrawer({ order, onClose, onUpdateStatus }) {
             <p className="font-mono font-bold text-rose-500 text-sm tracking-wide">{order.orderNumber}</p>
             <p className="text-xs text-ink-400">{createdAt}</p>
           </div>
+          <button onClick={() => printOrder(order)} title="Imprimir orden"
+            className="p-1.5 text-ink-400 hover:text-ink-900 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+              <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+          </button>
           <StatusBadge status={order.status} />
         </div>
 
@@ -102,8 +190,12 @@ function OrderDrawer({ order, onClose, onUpdateStatus }) {
           <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Cliente</p>
-              <button onClick={copyAddress}
-                className="text-xs text-rose-500 hover:text-rose-600 font-semibold">Copiar datos</button>
+              <div className="flex items-center gap-3">
+                <button onClick={copyAddress}
+                  className="text-xs text-rose-500 hover:text-rose-600 font-semibold">Copiar datos</button>
+                <button onClick={() => { onClose(); onSearchPhone(order.customer?.phone); }}
+                  className="text-xs text-blue-500 hover:text-blue-600 font-semibold">Ver historial</button>
+              </div>
             </div>
             <div>
               <p className="font-semibold text-ink-900">{order.customer?.name}</p>
@@ -160,10 +252,29 @@ function OrderDrawer({ order, onClose, onUpdateStatus }) {
               <span>Envío</span>
               <span>{order.shippingCost ? formatCRC(order.shippingCost) : 'Gratis'}</span>
             </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-emerald-600">
+                <span>Descuento {order.coupon?.code ? `(${order.coupon.code})` : ''}</span>
+                <span>-{formatCRC(order.discount)}</span>
+              </div>
+            )}
             <div className="flex justify-between pt-2 border-t border-cream-100 font-bold text-ink-900 text-base">
               <span>Total</span>
               <span>{formatCRC(order.total)}</span>
             </div>
+          </div>
+
+          {/* Internal notes */}
+          <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5">
+            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest mb-3">Notas internas</p>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
+              placeholder="Anotaciones solo visibles para vos (coordenadas, detalles del pago, etc.)"
+              className="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 transition-colors resize-none" />
+            <button onClick={async () => { setSavingNotes(true); await onUpdateNotes(order._id, notes); setSavingNotes(false); }}
+              disabled={savingNotes}
+              className="mt-2 px-4 py-2 rounded-xl text-xs font-bold bg-ink-900 text-white hover:bg-rose-500 transition-colors disabled:opacity-50">
+              {savingNotes ? 'Guardando...' : 'Guardar nota'}
+            </button>
           </div>
 
           {/* Status changer */}
@@ -192,6 +303,10 @@ function OrderDrawer({ order, onClose, onUpdateStatus }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.52 3.48A12 12 0 0 0 3.48 20.52L2 22l1.48-1.48a12 12 0 0 0 17.04-17.04zM12 21a9 9 0 0 1-4.6-1.27l-.33-.2-3.13.82.83-3.07-.21-.33A9 9 0 1 1 12 21z"/><path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96s-.47-.15-.67.15-.77.96-.94 1.16-.35.22-.65.07a8 8 0 0 1-2.37-1.46 8.8 8.8 0 0 1-1.64-2.04c-.17-.3 0-.45.13-.6.14-.14.3-.35.45-.52s.2-.3.3-.5a.55.55 0 0 0 0-.52c-.08-.15-.68-1.62-.92-2.22s-.5-.5-.67-.5h-.57a1.1 1.1 0 0 0-.8.37 3.35 3.35 0 0 0-1.04 2.49 5.8 5.8 0 0 0 1.22 3.1 13.4 13.4 0 0 0 5.15 4.56c.72.31 1.28.5 1.72.63a4.16 4.16 0 0 0 1.9.12 3.1 3.1 0 0 0 2.03-1.43 2.53 2.53 0 0 0 .17-1.43c-.07-.12-.27-.2-.56-.35z"/></svg>
             WhatsApp al cliente
           </a>
+          <button onClick={() => printOrder(order)}
+            className="px-4 py-3 rounded-xl text-sm font-semibold border border-cream-200 text-ink-600 hover:bg-cream-50 transition-colors">
+            Imprimir
+          </button>
           <button onClick={onClose}
             className="px-4 py-3 rounded-xl text-sm font-semibold border border-cream-200 text-ink-600 hover:bg-cream-50 transition-colors">
             Cerrar
@@ -230,13 +345,17 @@ function StatCard({ icon, label, value, accent, bg }) {
 }
 
 /* ── Order card — mobile ── */
-function OrderCard({ o, onOpen, onUpdateStatus }) {
+function OrderCard({ o, onOpen, onUpdateStatus, selected, onToggle }) {
   return (
-    <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-4 space-y-3">
-      <button onClick={() => onOpen(o)} className="w-full flex items-center justify-between gap-2 text-left">
-        <span className="font-mono font-bold text-rose-500 text-sm tracking-wide">{o.orderNumber}</span>
-        <StatusBadge status={o.status} />
-      </button>
+    <div className={`bg-white rounded-2xl border shadow-card p-4 space-y-3 transition-colors ${selected ? 'border-rose-300 bg-rose-50/30' : 'border-cream-100'}`}>
+      <div className="flex items-center gap-3">
+        <input type="checkbox" checked={selected} onChange={onToggle}
+          className="w-4 h-4 accent-rose-500 cursor-pointer flex-shrink-0" onClick={(e) => e.stopPropagation()} />
+        <button onClick={() => onOpen(o)} className="flex-1 flex items-center justify-between gap-2 text-left">
+          <span className="font-mono font-bold text-rose-500 text-sm tracking-wide">{o.orderNumber}</span>
+          <StatusBadge status={o.status} />
+        </button>
+      </div>
       <button onClick={() => onOpen(o)} className="w-full flex items-center justify-between gap-2 text-left">
         <div>
           <p className="font-semibold text-ink-900 text-sm">{o.customer?.name}</p>
@@ -276,6 +395,31 @@ function NoApi() {
 
 const PAGE_SIZE = 20;
 
+function exportCSV(orders) {
+  const headers = ['Orden','Fecha','Cliente','Telefono','Provincia','Direccion','Items','Subtotal','Envio','Descuento','Total','Estado','Cupon'];
+  const rows = orders.map((o) => [
+    o.orderNumber,
+    new Date(o.createdAt).toLocaleDateString('es-CR'),
+    o.customer?.name || '',
+    o.customer?.phone || '',
+    o.customer?.province || '',
+    (o.customer?.address || '').replace(/,/g, ';'),
+    (o.items || []).map((i) => `${i.name} x${i.qty}`).join(' | '),
+    o.subtotal || 0,
+    o.shippingCost || 0,
+    o.discount || 0,
+    o.total || 0,
+    o.status,
+    o.coupon?.code || '',
+  ]);
+  const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `ordenes-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
 export default function AdminOrders() {
   const [orders, setOrders]             = useState([]);
   const [stats, setStats]               = useState(null);
@@ -288,12 +432,18 @@ export default function AdminOrders() {
   const [pages, setPages]               = useState(1);
   const [total, setTotal]               = useState(0);
 
+  /* ── Bulk selection ── */
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkStatus, setBulkStatus]   = useState('confirmado');
+  const [bulking, setBulking]         = useState(false);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
 
   useEffect(() => { setPage(1); }, [statusFilter, debouncedQ]);
+  useEffect(() => { setSelectedIds(new Set()); }, [orders]);
 
   const load = useCallback(async () => {
     if (!USE_API) { setLoading(false); return; }
@@ -316,6 +466,44 @@ export default function AdminOrders() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener('jd:new-order', handler);
+    return () => window.removeEventListener('jd:new-order', handler);
+  }, [load]);
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === orders.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(orders.map((o) => o._id)));
+    }
+  };
+
+  const bulkUpdate = async () => {
+    if (!selectedIds.size) return;
+    setBulking(true);
+    try {
+      const { data } = await api.patch('/orders/admin/bulk-status', {
+        ids: [...selectedIds],
+        status: bulkStatus,
+      });
+      useToastStore.getState().success(`${data.updated} órdenes actualizadas a "${STATUS_CONFIG[bulkStatus]?.label}"`);
+      setSelectedIds(new Set());
+      load();
+    } catch (err) {
+      useToastStore.getState().error(err.response?.data?.error || 'Error al actualizar');
+    } finally { setBulking(false); }
+  };
+
   const updateStatus = async (id, status) => {
     try {
       const { data } = await api.patch(`/orders/admin/${id}/status`, { status });
@@ -323,20 +511,56 @@ export default function AdminOrders() {
       setSelected((s) => (s && s._id === id ? { ...s, status: data.status } : s));
       useToastStore.getState().success(`Estado cambiado a "${STATUS_CONFIG[status]?.label || status}"`);
       api.get('/orders/admin/stats').then((r) => setStats(r.data)).catch(() => {});
+
+      if (status === 'enviado') {
+        const order = orders.find((o) => o._id === id) || selected;
+        if (order) {
+          const firstName = order.customer?.name?.split(' ')[0] || '';
+          const trackUrl  = `${window.location.origin}/pedido/${order.orderNumber}`;
+          const msg = [
+            `Hola ${firstName}!`,
+            `Tu pedido *#${order.orderNumber}* ya fue enviado y esta en camino.`,
+            '',
+            `Podes rastrear el estado aqui:`,
+            trackUrl,
+            '',
+            'Gracias por tu compra! Cualquier consulta estamos para ayudarte.',
+          ].join('\n');
+          const phone = (order.customer?.phone || '').replace(/\D/g, '');
+          const wa = `https://wa.me/${phone.length === 8 ? '506' + phone : phone}?text=${encodeURIComponent(msg)}`;
+          window.open(wa, '_blank');
+        }
+      }
     } catch (err) {
       useToastStore.getState().error(err.response?.data?.error || 'No se pudo cambiar el estado');
     }
   };
 
+  const searchByPhone = (phone) => {
+    if (phone) setSearch(phone);
+  };
+
   if (!USE_API) return <NoApi />;
+
+  const allSelected = orders.length > 0 && selectedIds.size === orders.length;
+  const someSelected = selectedIds.size > 0;
 
   return (
     <div className="space-y-5">
 
       {/* Header */}
-      <div>
-        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-none">Órdenes</h1>
-        <p className="text-ink-400 text-sm mt-1">{stats?.totalOrders ?? '—'} órdenes en total</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-none">Órdenes</h1>
+          <p className="text-ink-400 text-sm mt-1">{stats?.totalOrders ?? '—'} órdenes en total</p>
+        </div>
+        {orders.length > 0 && (
+          <button onClick={() => exportCSV(orders)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-cream-200 text-ink-600 hover:bg-cream-50 transition-colors bg-white shadow-sm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar CSV
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -346,6 +570,32 @@ export default function AdminOrders() {
           <StatCard icon="🕐" label="Hoy"             value={stats.todayOrders}              accent="#3B82F6" bg="#EFF6FF" />
           <StatCard icon="💰" label="Ingresos semana" value={formatCRC(stats.weekRevenue)}   accent="#16A34A" bg="#F0FDF4" />
           <StatCard icon="⏳" label="Pendientes"      value={stats.statusCounts?.pendiente || 0} accent="#D97706" bg="#FFFBEB" />
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="bg-ink-900 text-white rounded-2xl px-5 py-3.5 flex items-center gap-4 flex-wrap shadow-lg">
+          <span className="text-sm font-semibold">
+            {selectedIds.size} {selectedIds.size === 1 ? 'orden seleccionada' : 'órdenes seleccionadas'}
+          </span>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-white/60 text-xs">Cambiar a:</span>
+            <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}
+              className="bg-white/10 text-white border border-white/20 rounded-xl px-3 py-1.5 text-sm focus:outline-none cursor-pointer">
+              {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                <option key={k} value={k} className="text-ink-900 bg-white">{v.label}</option>
+              ))}
+            </select>
+            <button onClick={bulkUpdate} disabled={bulking}
+              className="px-4 py-1.5 rounded-xl text-sm font-bold bg-rose-500 hover:bg-rose-600 transition-colors disabled:opacity-50">
+              {bulking ? 'Actualizando...' : 'Aplicar'}
+            </button>
+          </div>
+          <button onClick={() => setSelectedIds(new Set())}
+            className="text-white/60 hover:text-white text-xs transition-colors">
+            Cancelar
+          </button>
         </div>
       )}
 
@@ -400,8 +650,12 @@ export default function AdminOrders() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-cream-50 border-b border-cream-200">
+                  <th className="pl-5 pr-3 py-3.5 w-8">
+                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+                      className="w-4 h-4 accent-rose-500 cursor-pointer" />
+                  </th>
                   {['Orden','Cliente','Total','Estado','Fecha','Cambiar estado'].map((h) => (
-                    <th key={h} className="text-left px-5 py-3.5 text-[11px] font-bold text-ink-400 uppercase tracking-widest first:px-5 last:px-4">
+                    <th key={h} className="text-left px-4 py-3.5 text-[11px] font-bold text-ink-400 uppercase tracking-widest last:px-4">
                       {h}
                     </th>
                   ))}
@@ -410,16 +664,19 @@ export default function AdminOrders() {
               <tbody>
                 {orders.map((o) => (
                   <tr key={o._id}
-                    onClick={() => setSelected(o)}
-                    className="hover:bg-cream-50/60 transition-colors border-b border-cream-100 last:border-0 cursor-pointer">
-                    <td className="px-5 py-3.5 font-mono font-bold text-rose-500 text-sm tracking-wide">{o.orderNumber}</td>
-                    <td className="px-4 py-3.5">
+                    className={`hover:bg-cream-50/60 transition-colors border-b border-cream-100 last:border-0 ${selectedIds.has(o._id) ? 'bg-rose-50/40' : ''}`}>
+                    <td className="pl-5 pr-3 py-3.5" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(o._id)} onChange={() => toggleSelect(o._id)}
+                        className="w-4 h-4 accent-rose-500 cursor-pointer" />
+                    </td>
+                    <td className="px-4 py-3.5 font-mono font-bold text-rose-500 text-sm tracking-wide cursor-pointer" onClick={() => setSelected(o)}>{o.orderNumber}</td>
+                    <td className="px-4 py-3.5 cursor-pointer" onClick={() => setSelected(o)}>
                       <p className="font-semibold text-ink-900 text-sm">{o.customer?.name}</p>
                       <p className="text-xs text-ink-400">{o.customer?.phone}</p>
                     </td>
-                    <td className="px-4 py-3.5 font-bold text-ink-900 whitespace-nowrap">{formatCRC(o.total)}</td>
-                    <td className="px-4 py-3.5"><StatusBadge status={o.status} /></td>
-                    <td className="px-4 py-3.5 text-ink-400 text-xs whitespace-nowrap">
+                    <td className="px-4 py-3.5 font-bold text-ink-900 whitespace-nowrap cursor-pointer" onClick={() => setSelected(o)}>{formatCRC(o.total)}</td>
+                    <td className="px-4 py-3.5 cursor-pointer" onClick={() => setSelected(o)}><StatusBadge status={o.status} /></td>
+                    <td className="px-4 py-3.5 text-ink-400 text-xs whitespace-nowrap cursor-pointer" onClick={() => setSelected(o)}>
                       {new Date(o.createdAt).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
@@ -440,7 +697,8 @@ export default function AdminOrders() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             {orders.map((o) => (
-              <OrderCard key={o._id} o={o} onOpen={setSelected} onUpdateStatus={updateStatus} />
+              <OrderCard key={o._id} o={o} onOpen={setSelected} onUpdateStatus={updateStatus}
+                selected={selectedIds.has(o._id)} onToggle={() => toggleSelect(o._id)} />
             ))}
             {pages > 1 && (
               <div className="pt-2">
@@ -456,6 +714,14 @@ export default function AdminOrders() {
           order={selected}
           onClose={() => setSelected(null)}
           onUpdateStatus={updateStatus}
+          onSearchPhone={searchByPhone}
+          onUpdateNotes={async (id, notes) => {
+            try {
+              await api.patch(`/orders/admin/${id}/notes`, { notes });
+              setOrders((prev) => prev.map((o) => o._id === id ? { ...o, internalNotes: notes } : o));
+              useToastStore.getState().success('Nota guardada');
+            } catch { useToastStore.getState().error('No se pudo guardar la nota'); }
+          }}
         />
       )}
     </div>

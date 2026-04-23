@@ -6,16 +6,29 @@ import { formatCRC } from '../lib/currency';
 import { buildWhatsAppMessage } from '../lib/whatsapp';
 import MapAddressPicker from '../components/ui/MapAddressPicker';
 import api from '../lib/api';
+import { trackBeginCheckout, trackPurchase } from '../lib/analytics';
 
-const USE_API = import.meta.env.VITE_API_URL;
-const PROVINCES = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
-const SHIPPING = { correos: { label: 'Correos de CR (3-5 días)', price: 2500 }, express: { label: 'Express zona Puntarenas', price: 1500 }, pickup: { label: 'Retiro en El Roble (gratis)', price: 0 } };
+const USE_API    = import.meta.env.VITE_API_URL;
+const MAPS_KEY   = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+const PLACE_ID   = 'ChIJozibdVQxoI8R8UWRnLA1T6w';
+const PROVINCES  = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
+const SHIPPING   = { correos: { label: 'Correos de CR (3-5 días)', price: 2500 }, express: { label: 'Express zona Puntarenas', price: 1500 }, pickup: { label: 'Retiro en El Roble (gratis)', price: 0 } };
+const isPickup   = (s) => s === 'pickup';
+
+const SINPE_NUMBER = '8673-7114';
+const SINPE_NAME   = 'Justin Vargas Quiros';
+
+const PAYMENT_METHODS = {
+  whatsapp: { label: 'Coordinar por WhatsApp',  sub: 'Te indicamos cómo pagar al confirmar' },
+  sinpe:    { label: 'SINPE Movil',              sub: `${SINPE_NUMBER} · ${SINPE_NAME}` },
+};
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const navigate = useNavigate();
   const [shipping, setShipping] = useState('correos');
-  const [form, setForm] = useState({ name: '', phone: '', province: 'Puntarenas', address: '', notes: '', lat: null, lng: null });
+  const [payment, setPayment]   = useState('whatsapp');
+  const [form, setForm] = useState({ name: '', phone: '', email: '', province: 'Puntarenas', address: '', notes: '', lat: null, lng: null });
 
   const [couponCode,   setCouponCode]   = useState('');
   const [coupon,       setCoupon]       = useState(null); // { code, type, discount, freeShipping, description }
@@ -58,17 +71,65 @@ export default function Checkout() {
 
   const removeCoupon = () => { setCoupon(null); setCouponError(''); };
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const url = buildWhatsAppMessage(items, {
+    if (submitting) return;
+    trackBeginCheckout(items, grandTotal);
+
+    const customerData = {
       ...form,
       shippingMethod: SHIPPING[shipping].label,
       shippingCost,
       coupon: coupon ? { code: coupon.code, discount, freeShipping: coupon.freeShipping } : null,
-    });
+      paymentMethod: PAYMENT_METHODS[payment].label,
+    };
+
+    let orderNumber = null;
+
+    if (USE_API) {
+      setSubmitting(true);
+      try {
+        const payload = {
+          customer: {
+            name:     form.name,
+            phone:    form.phone,
+            email:    form.email || '',
+            province: isPickup(shipping) ? 'Puntarenas' : form.province,
+            address:  isPickup(shipping) ? 'Retiro en local — El Roble, Puntarenas' : form.address,
+            notes:    form.notes || '',
+            lat:      form.lat || null,
+            lng:      form.lng || null,
+          },
+          items: items.map((i) => ({
+            productId: i.id,
+            name:      i.name,
+            brand:     i.brand || '',
+            price:     i.price,
+            qty:       i.qty,
+            image:     i.img || '',
+          })),
+          subtotal: total,
+          shippingCost,
+          shippingMethod: shipping,
+          coupon: coupon ? { code: coupon.code, discount, freeShipping: coupon.freeShipping } : null,
+        };
+        const { data } = await api.post('/orders', payload);
+        orderNumber = data.orderNumber;
+        trackPurchase(data.orderNumber, items, grandTotal);
+      } catch (err) {
+        console.error('Error al crear pedido:', err?.response?.data || err?.message || err);
+        // Continue opening WhatsApp even if backend fails
+      } finally {
+        setSubmitting(false);
+      }
+    }
+
+    const url = buildWhatsAppMessage(items, customerData, orderNumber);
     window.open(url, '_blank', 'noopener');
     clearCart();
-    navigate('/confirmacion');
+    navigate('/confirmacion', { state: { orderNumber } });
   };
 
   if (items.length === 0) {
@@ -106,26 +167,74 @@ export default function Checkout() {
                   <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Teléfono / WhatsApp *</label>
                   <input required value={form.phone} onChange={set('phone')} placeholder="8804-5100" className={inputCls} />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Provincia *</label>
-                  <select required value={form.province} onChange={set('province')} className={inputCls}>
-                    {PROVINCES.map((p) => <option key={p}>{p}</option>)}
-                  </select>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">
+                    Correo electrónico <span className="text-ink-300 normal-case font-normal">(opcional — para recibir confirmación)</span>
+                  </label>
+                  <input type="email" value={form.email} onChange={set('email')} placeholder="tucorreo@gmail.com" className={inputCls} />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Dirección exacta *</label>
-                  <MapAddressPicker
-                    required
-                    value={form.address}
-                    onChange={(v) => setForm((f) => ({ ...f, address: v, lat: null, lng: null }))}
-                    onPick={handleAddressPick}
-                    placeholder="Ciudad, barrio, señas — o tocá 📍 Mapa"
-                    className={inputCls}
-                  />
-                  <p className="text-[11px] text-ink-400 mt-1">
-                    Tip: tocá <span className="font-semibold text-rose-500">📍 Mapa</span> para marcar tu ubicación exacta en el mapa.
-                  </p>
-                </div>
+                {!isPickup(shipping) && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Provincia *</label>
+                      <select required value={form.province} onChange={set('province')} className={inputCls}>
+                        {PROVINCES.map((p) => <option key={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Dirección exacta *</label>
+                      <MapAddressPicker
+                        required
+                        value={form.address}
+                        onChange={(v) => setForm((f) => ({ ...f, address: v, lat: null, lng: null }))}
+                        onPick={handleAddressPick}
+                        placeholder="Ciudad, barrio, señas — o tocá 📍 Mapa"
+                        className={inputCls}
+                      />
+                      <p className="text-[11px] text-ink-400 mt-1">
+                        Tip: tocá <span className="font-semibold text-rose-500">📍 Mapa</span> para marcar tu ubicación exacta en el mapa.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {isPickup(shipping) && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-2">Ubicación del local</label>
+                    <div className="rounded-xl overflow-hidden border border-cream-200 shadow-sm">
+                      {/* Street View */}
+                      {MAPS_KEY ? (
+                        <div className="relative">
+                          <iframe
+                            title="Vista del local JD Virtual"
+                            width="100%"
+                            height="260"
+                            style={{ border: 0, display: 'block' }}
+                            loading="lazy"
+                            allowFullScreen
+                            referrerPolicy="no-referrer-when-downgrade"
+                            src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_KEY}&q=place_id:${PLACE_ID}&maptype=roadmap&zoom=17`}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-40 bg-cream-100 flex items-center justify-center text-ink-400 text-sm">Mapa no disponible</div>
+                      )}
+                      <div className="bg-cream-50 px-4 py-3 flex items-start gap-3">
+                        <span className="text-lg mt-0.5">📍</span>
+                        <div>
+                          <p className="text-sm font-semibold text-ink-900">JD Virtual Store — El Roble, Puntarenas</p>
+                          <p className="text-xs text-ink-400 mt-0.5">Te coordinaremos el punto exacto por WhatsApp · Lun–Sáb 9am–7pm</p>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=place_id:${PLACE_ID}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-rose-500 font-semibold hover:underline mt-1 inline-block">
+                            Abrir en Google Maps →
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1.5">Notas adicionales</label>
                   <textarea value={form.notes} onChange={set('notes')} rows={2} placeholder="Color, talla, preferencias..." className={inputCls + ' resize-none'} />
@@ -149,6 +258,29 @@ export default function Checkout() {
                   </label>
                 ))}
               </div>
+            </div>
+            {/* Payment */}
+            <div className="bg-white rounded-xl2 p-6 shadow-card">
+              <h2 className="font-display text-xl font-semibold text-ink-900 mb-5">Método de pago</h2>
+              <div className="space-y-3">
+                {Object.entries(PAYMENT_METHODS).map(([key, val]) => (
+                  <label key={key} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-colors ${payment === key ? 'border-rose-400 bg-rose-50' : 'border-cream-200 hover:border-rose-200'}`}>
+                    <input type="radio" name="payment" value={key} checked={payment === key} onChange={() => setPayment(key)} className="accent-rose-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-ink-800">{val.label}</p>
+                      <p className="text-xs text-ink-400 mt-0.5">{val.sub}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              {payment === 'sinpe' && (
+                <div className="mt-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  <p className="text-xs font-bold text-green-800 uppercase tracking-wide mb-1">Datos de SINPE Movil</p>
+                  <p className="text-sm font-bold text-green-900">{SINPE_NUMBER}</p>
+                  <p className="text-xs text-green-700">{SINPE_NAME}</p>
+                  <p className="text-xs text-green-600 mt-2">Envia el comprobante por WhatsApp despues de realizar el pago.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -239,9 +371,19 @@ export default function Checkout() {
                 </div>
               </div>
               <button type="submit"
-                className="w-full mt-6 flex items-center justify-center gap-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold py-4 rounded-xl transition-colors text-base shadow-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                Enviar pedido por WhatsApp
+                disabled={submitting}
+                className="w-full mt-6 flex items-center justify-center gap-2.5 bg-green-500 hover:bg-green-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-colors text-base shadow-btn">
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    Registrando pedido...
+                  </>
+                ) : (
+                  <>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Enviar pedido por WhatsApp
+                  </>
+                )}
               </button>
               <p className="text-center text-xs text-ink-400 mt-3">Se abrirá WhatsApp con tu pedido completo</p>
             </div>

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
+import useToastStore from '../../store/toastStore';
 import { PRODUCTS } from '../../data/products';
 import api from '../../lib/api';
 import { formatCRC } from '../../lib/currency';
@@ -13,17 +14,19 @@ const ProductIcon = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="
 const OrderIcon   = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>;
 const CouponIcon  = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12V7H4v10h16v-5"/><path d="M4 12h16"/><circle cx="9" cy="12" r="0.5" fill="currentColor"/><circle cx="15" cy="12" r="0.5" fill="currentColor"/></svg>;
 const ConfigIcon  = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+const ReviewIcon  = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
 const MenuIcon    = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>;
 const CloseIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>;
 const LogoutIcon  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
 const StoreIcon   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
 
 const NAV = [
-  { to: '/admin',           label: 'Dashboard',    icon: <DashIcon />,    exact: true },
-  { to: '/admin/productos', label: 'Productos',     icon: <ProductIcon />              },
-  { to: '/admin/ordenes',   label: 'Órdenes',       icon: <OrderIcon />                },
-  { to: '/admin/cupones',   label: 'Cupones',       icon: <CouponIcon />               },
-  { to: '/admin/config',    label: 'Configuración', icon: <ConfigIcon />               },
+  { to: '/admin',            label: 'Dashboard',    icon: <DashIcon />,    exact: true },
+  { to: '/admin/productos',  label: 'Productos',    icon: <ProductIcon />              },
+  { to: '/admin/ordenes',    label: 'Órdenes',      icon: <OrderIcon />                },
+  { to: '/admin/cupones',    label: 'Cupones',      icon: <CouponIcon />               },
+  { to: '/admin/resenas',    label: 'Reseñas',      icon: <ReviewIcon />               },
+  { to: '/admin/config',     label: 'Configuración',icon: <ConfigIcon />               },
 ];
 
 const PAGE_TITLES = {
@@ -32,6 +35,7 @@ const PAGE_TITLES = {
   '/admin/productos':          'Productos',
   '/admin/ordenes':            'Órdenes',
   '/admin/cupones':            'Cupones',
+  '/admin/resenas':            'Reseñas',
   '/admin/config':             'Configuración',
 };
 
@@ -116,6 +120,94 @@ function RecentOrders({ orders, loading }) {
   );
 }
 
+/* ── Sales bar chart (SVG) ── */
+function SalesChart({ data }) {
+  if (!data?.length) return <p className="text-sm text-ink-400 text-center py-8">Sin datos aún.</p>;
+
+  const thisWeek = data.slice(7);
+  const prevWeek = data.slice(0, 7);
+  const maxRev   = Math.max(...data.map((d) => d.revenue), 1);
+
+  const prevTotal = prevWeek.reduce((s, d) => s + d.revenue, 0);
+  const thisTotal = thisWeek.reduce((s, d) => s + d.revenue, 0);
+  const pct       = prevTotal > 0 ? ((thisTotal - prevTotal) / prevTotal) * 100 : null;
+
+  const weekLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const BAR_W = 28;
+  const GAP   = 10;
+  const H     = 80;
+  const W     = thisWeek.length * (BAR_W + GAP) - GAP;
+
+  return (
+    <div className="space-y-3">
+      {/* Week-over-week badge */}
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-ink-400 font-medium">Últimos 7 días vs semana anterior</p>
+        {pct !== null && (
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+            pct >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+          }`}>
+            {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+          </span>
+        )}
+      </div>
+      {/* SVG bars */}
+      <svg viewBox={`0 0 ${W} ${H + 20}`} className="w-full overflow-visible">
+        {thisWeek.map((d, i) => {
+          const barH  = Math.max(2, (d.revenue / maxRev) * H);
+          const x     = i * (BAR_W + GAP);
+          const y     = H - barH;
+          const day   = new Date(d.date + 'T12:00:00');
+          const label = weekLabels[day.getDay()];
+          const prevD = prevWeek[i];
+          const prevH = Math.max(2, (prevD.revenue / maxRev) * H);
+          return (
+            <g key={d.date}>
+              {/* prev week ghost bar */}
+              <rect x={x} y={H - prevH} width={BAR_W} height={prevH}
+                rx="4" fill="#F3E8EC" />
+              {/* this week bar */}
+              <rect x={x} y={y} width={BAR_W} height={barH}
+                rx="4" fill="#B85F72" />
+              <text x={x + BAR_W / 2} y={H + 14} textAnchor="middle"
+                fontSize="9" fill="#9CA3AF">{label}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex items-center gap-3 text-[10px] text-ink-400">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-500 inline-block" /> Esta semana</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-100 inline-block" /> Semana anterior</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Top products list ── */
+function TopProducts({ products, loading }) {
+  if (loading) return <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-cream-50 rounded-xl animate-pulse" />)}</div>;
+  if (!products.length) return <p className="text-sm text-ink-400 text-center py-8">Sin datos de los últimos 30 días.</p>;
+
+  const maxUnits = Math.max(...products.map((p) => p.units), 1);
+  return (
+    <div className="space-y-3">
+      {products.map((p, i) => (
+        <div key={p.name} className="flex items-center gap-3">
+          <span className="text-[11px] font-bold text-ink-300 w-4 flex-shrink-0">{i + 1}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-ink-900 truncate">{p.name}</p>
+            <div className="mt-1 h-1.5 bg-cream-100 rounded-full overflow-hidden">
+              <div className="h-full bg-rose-400 rounded-full transition-all"
+                style={{ width: `${(p.units / maxUnits) * 100}%` }} />
+            </div>
+          </div>
+          <span className="text-xs text-ink-400 flex-shrink-0">{p.units} un.</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Low stock list ── */
 function LowStock({ products }) {
   const low = products
@@ -153,28 +245,41 @@ function DashboardHome({ adminName }) {
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
   const today    = new Date().toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const [stats, setStats]       = useState(null);
-  const [orders, setOrders]     = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading]   = useState(Boolean(USE_API));
+  const [stats, setStats]         = useState(null);
+  const [orders, setOrders]       = useState([]);
+  const [products, setProducts]   = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [topProds, setTopProds]   = useState([]);
+  const [loading, setLoading]     = useState(Boolean(USE_API));
+  const [topLoading, setTopLoading] = useState(Boolean(USE_API));
+
+  const fetchData = useCallback(async () => {
+    if (!USE_API) { setProducts(PRODUCTS); setLoading(false); setTopLoading(false); return; }
+    try {
+      const [statsRes, ordersRes, productsRes, chartRes, topRes] = await Promise.all([
+        api.get('/orders/admin/stats'),
+        api.get('/orders/admin/all', { params: { limit: 5 } }),
+        api.get('/products/admin/all'),
+        api.get('/orders/admin/chart'),
+        api.get('/orders/admin/top-products'),
+      ]);
+      setStats(statsRes.data);
+      setOrders(ordersRes.data.orders || []);
+      setProducts(productsRes.data.products || []);
+      setChartData(chartRes.data || []);
+      setTopProds(topRes.data || []);
+    } catch {
+      // keep defaults
+    } finally { setLoading(false); setTopLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    if (!USE_API) { setProducts(PRODUCTS); return; }
-    (async () => {
-      try {
-        const [statsRes, ordersRes, productsRes] = await Promise.all([
-          api.get('/orders/admin/stats'),
-          api.get('/orders/admin/all', { params: { limit: 5 } }),
-          api.get('/products/admin/all'),
-        ]);
-        setStats(statsRes.data);
-        setOrders(ordersRes.data.orders || []);
-        setProducts(productsRes.data.products || []);
-      } catch {
-        // keep defaults
-      } finally { setLoading(false); }
-    })();
-  }, []);
+    const handler = () => fetchData();
+    window.addEventListener('jd:new-order', handler);
+    return () => window.removeEventListener('jd:new-order', handler);
+  }, [fetchData]);
 
   const productCount = USE_API ? products.length : PRODUCTS.length;
   const activeCount  = USE_API ? products.filter((p) => p.isActive !== false).length : PRODUCTS.length;
@@ -209,6 +314,20 @@ function DashboardHome({ adminName }) {
         <StatCard icon="⏳" label="Pendientes"    value={stats ? pending : (USE_API ? '...' : '—')}
           sub={pending > 0 ? 'Por atender' : 'Al día'} accent="#D97706" bg="#FFFBEB" />
       </div>
+
+      {/* Sales chart + Top products */}
+      {USE_API && (
+        <div className="grid lg:grid-cols-2 gap-5">
+          <div className="bg-white rounded-2xl shadow-card border border-cream-100 p-5 sm:p-6">
+            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest mb-4">Ventas diarias</p>
+            <SalesChart data={chartData} />
+          </div>
+          <div className="bg-white rounded-2xl shadow-card border border-cream-100 p-5 sm:p-6">
+            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest mb-4">Top productos (30 días)</p>
+            <TopProducts products={topProds} loading={topLoading} />
+          </div>
+        </div>
+      )}
 
       {/* Recent orders + Low stock */}
       <div className="grid lg:grid-cols-2 gap-5">
@@ -305,11 +424,146 @@ function SidebarContent({ location, onNavigate, onLogout, adminName }) {
   );
 }
 
+/* ── Audio context — must be created after a user gesture to work in browsers ── */
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playOrderSound() {
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    // C5-E5-G5-C6 ascending chime, loud and clear
+    const notes = [
+      { freq: 523.25, t: 0.00, dur: 0.22 },
+      { freq: 659.25, t: 0.13, dur: 0.22 },
+      { freq: 783.99, t: 0.26, dur: 0.22 },
+      { freq: 1046.5, t: 0.39, dur: 0.55 },
+    ];
+    notes.forEach(({ freq, t, dur }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + t);
+      gain.gain.linearRampToValueAtTime(0.7, now + t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + t + dur);
+      osc.start(now + t);
+      osc.stop(now + t + dur + 0.05);
+    });
+    // Shimmer layer
+    [523.25, 1046.5].forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.value = freq * 2;
+      const t = i * 0.39;
+      gain.gain.setValueAtTime(0, now + t);
+      gain.gain.linearRampToValueAtTime(0.18, now + t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.3);
+      osc.start(now + t);
+      osc.stop(now + t + 0.35);
+    });
+  } catch {}
+}
+
+function showNotification(customer, orderNumber) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  new Notification('Nuevo pedido recibido!', {
+    body: `${customer} — #${orderNumber}`,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: orderNumber,
+    requireInteraction: true,
+  });
+}
+
+let _pendingOrders = 0;
+function updateTabTitle(delta = 0) {
+  _pendingOrders = Math.max(0, _pendingOrders + delta);
+  const base = 'JD Admin';
+  document.title = _pendingOrders > 0 ? `(${_pendingOrders}) Pedido nuevo! — ${base}` : base;
+}
+
+function useNewOrderAlert() {
+  useEffect(() => {
+    document.title = 'JD Admin';
+    const unlock = () => { try { getAudioCtx(); } catch {} };
+    document.addEventListener('click', unlock, { once: true });
+
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl) return () => document.removeEventListener('click', unlock);
+    const token = useAuthStore.getState().token;
+    if (!token) return () => document.removeEventListener('click', unlock);
+
+    const es = new EventSource(`${apiUrl}/events?token=${token}`);
+
+    es.addEventListener('new-order', (e) => {
+      const data = JSON.parse(e.data);
+      playOrderSound();
+      showNotification(data.customer || 'Cliente', data.orderNumber);
+      updateTabTitle(+1);
+      useToastStore.getState().success(
+        `Nuevo pedido de ${data.customer || 'cliente'}! #${data.orderNumber}`
+      );
+      window.dispatchEvent(new CustomEvent('jd:new-order', { detail: data }));
+    });
+
+    // Reset tab title when window gets focus
+    const onFocus = () => { _pendingOrders = 0; document.title = 'JD Admin'; };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      es.close();
+      document.removeEventListener('click', unlock);
+      window.removeEventListener('focus', onFocus);
+      document.title = 'JD Admin';
+    };
+  }, []);
+}
+
 export default function AdminDashboard() {
+  useNewOrderAlert();
   const location = useLocation();
   const navigate = useNavigate();
   const { admin, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifPerm, setNotifPerm] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'granted'
+  );
+  const [notifAsking, setNotifAsking] = useState(false);
+
+  const requestNotifPerm = async () => {
+    setNotifAsking(true);
+    try {
+      let perm;
+      if (typeof Notification.requestPermission === 'function') {
+        perm = await new Promise((resolve) => {
+          const result = Notification.requestPermission(resolve);
+          if (result?.then) result.then(resolve);
+        });
+      }
+      perm = perm || Notification.permission;
+      setNotifPerm(perm);
+      if (perm === 'granted') {
+        setTimeout(() => {
+          new Notification('Notificaciones activadas!', {
+            body: 'Te avisaremos cuando llegue un pedido nuevo.',
+            icon: '/icons/icon-192.png',
+          });
+        }, 300);
+      }
+    } catch {
+      setNotifPerm(Notification.permission);
+    } finally {
+      setNotifAsking(false);
+    }
+  };
 
   const handleLogout = () => { logout(); navigate('/admin/login'); };
   const isDashboardHome = location.pathname === '/admin';
@@ -367,6 +621,21 @@ export default function AdminDashboard() {
             {admin?.name?.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'JD'}
           </div>
         </header>
+
+        {notifPerm !== 'granted' && (
+          <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-3">
+            <span className="text-xs text-blue-700 flex-1">
+              Pedidos nuevos aparecen en el titulo de la pestana aunque estes en otra ventana.
+              {notifPerm === 'default' && (
+                <button onClick={requestNotifPerm} disabled={notifAsking}
+                  className="ml-2 underline font-bold hover:text-blue-900 disabled:opacity-60">
+                  {notifAsking ? 'Esperando...' : 'Activar notificaciones del sistema'}
+                </button>
+              )}
+              {notifPerm === 'denied' && <span className="ml-2 text-blue-500">(Notificaciones bloqueadas en este navegador)</span>}
+            </span>
+          </div>
+        )}
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {isDashboardHome ? <DashboardHome adminName={admin?.name} /> : <Outlet />}

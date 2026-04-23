@@ -4,10 +4,11 @@ const requireAuth = require('../middleware/auth');
 const upload      = require('../middleware/upload');
 
 /* Public */
-router.get('/',           ctrl.getAll);
-router.get('/categories', ctrl.getCategories);
-router.get('/brands',     ctrl.getBrands);
-router.get('/:slug',      ctrl.getBySlug);
+router.get('/',             ctrl.getAll);
+router.get('/top-sellers',  ctrl.topSellers);
+router.get('/categories',   ctrl.getCategories);
+router.get('/brands',       ctrl.getBrands);
+router.get('/:slug',        ctrl.getBySlug);
 
 /* Admin */
 router.get('/admin/all',              requireAuth, ctrl.adminGetAll);

@@ -16,6 +16,10 @@ const DEFAULTS = {
   shippingCostExpress: 4500,
   freeShippingFrom: 25000,
   bankInfo: '',
+  promoBanner: '',
+  promoBannerActive: false,
+  promoBannerColor: '#B85F72',
+  notificationEmail: '',
 };
 
 const inputCls  = 'w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white';
@@ -43,7 +47,9 @@ export default function AdminConfig() {
   }, []);
 
   const set = (k) => (e) => {
-    const v = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
+    const v = e.target.type === 'number' ? Number(e.target.value)
+            : e.target.type === 'checkbox' ? e.target.checked
+            : e.target.value;
     setForm((f) => ({ ...f, [k]: v }));
     setDirty(true);
   };
@@ -165,6 +171,62 @@ export default function AdminConfig() {
             placeholder="SINPE Móvil: 8804-5100 (JD Virtual)&#10;BAC: CR12 3456 7890 1234 5678" />
           <p className="text-[11px] text-ink-400 mt-1">Esta información se enviará al cliente por WhatsApp al confirmar el pedido.</p>
         </div>
+      </div>
+
+      {/* Notificaciones */}
+      <div className={sectionCls}>
+        <div>
+          <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Notificaciones por correo</p>
+          <p className="text-xs text-ink-400 mt-1">Cuando llegue un pedido nuevo te mandamos un correo con todos los detalles.</p>
+        </div>
+        <div>
+          <label className={labelCls}>Correo para recibir notificaciones</label>
+          <input type="email" value={form.notificationEmail} onChange={set('notificationEmail')} className={inputCls}
+            placeholder="tucorreo@gmail.com" />
+          <p className="text-[11px] text-ink-400 mt-1.5">
+            También necesitás configurar <code className="bg-cream-100 px-1 rounded text-rose-500">SMTP_USER</code> y{' '}
+            <code className="bg-cream-100 px-1 rounded text-rose-500">SMTP_PASS</code> en el archivo <code className="bg-cream-100 px-1 rounded text-rose-500">.env</code> del servidor.
+          </p>
+        </div>
+      </div>
+
+      {/* Banner promocional */}
+      <div className={sectionCls}>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Banner promocional</p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <span className="text-xs text-ink-500 font-medium">{form.promoBannerActive ? 'Activo' : 'Inactivo'}</span>
+            <div className="relative">
+              <input type="checkbox" checked={form.promoBannerActive} onChange={set('promoBannerActive')} className="sr-only" />
+              <div onClick={() => { setForm(f => ({ ...f, promoBannerActive: !f.promoBannerActive })); setDirty(true); }}
+                className={`w-10 h-6 rounded-full transition-colors cursor-pointer ${form.promoBannerActive ? 'bg-rose-500' : 'bg-ink-200'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.promoBannerActive ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+            </div>
+          </label>
+        </div>
+        <div>
+          <label className={labelCls}>Texto del banner</label>
+          <input value={form.promoBanner} onChange={set('promoBanner')} className={inputCls}
+            placeholder="Envio gratis en pedidos mayores a 25.000! Usa el cupon VERANO10" />
+        </div>
+        <div>
+          <label className={labelCls}>Color de fondo</label>
+          <div className="flex items-center gap-3">
+            <input type="color" value={form.promoBannerColor} onChange={set('promoBannerColor')}
+              className="w-10 h-10 rounded-lg border border-cream-200 cursor-pointer p-1 bg-white" />
+            <input value={form.promoBannerColor} onChange={set('promoBannerColor')} className={inputCls + ' flex-1'} />
+          </div>
+        </div>
+        {form.promoBanner && (
+          <div className="rounded-xl overflow-hidden">
+            <div className="flex items-center justify-center px-10 py-2.5 text-white text-sm font-medium text-center"
+              style={{ background: form.promoBannerColor }}>
+              {form.promoBanner}
+            </div>
+            <p className="text-[11px] text-ink-400 text-center mt-1">Vista previa</p>
+          </div>
+        )}
       </div>
 
       {dirty && (

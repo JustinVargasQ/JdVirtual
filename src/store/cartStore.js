@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { trackAddToCart } from '../lib/analytics';
 
 const useCartStore = create(
   persist(
@@ -12,6 +13,7 @@ const useCartStore = create(
       toggleCart: () => set((s) => ({ isOpen: !s.isOpen })),
 
       addItem(product, qty = 1) {
+        trackAddToCart(product, qty);
         set((s) => {
           const existing = s.items.find((i) => i.id === product.id);
           if (existing) {

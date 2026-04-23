@@ -189,6 +189,53 @@ function ProductCard({ p, toggle, remove }) {
   );
 }
 
+function generateCatalog(products) {
+  const fmt = (n) => `₡${Number(n || 0).toLocaleString('es-CR')}`;
+  const active = products.filter((p) => p.isActive !== false);
+
+  const cards = active.map((p) => {
+    const img = p.images?.[0] || p.img || '';
+    const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0;
+    return `<div style="border:1px solid #eee;border-radius:12px;overflow:hidden;break-inside:avoid">
+      ${img ? `<img src="${img}" alt="${p.name}" style="width:100%;height:160px;object-fit:cover">` : `<div style="width:100%;height:160px;background:#f5f0f0;display:flex;align-items:center;justify-content:center;font-size:32px">🌸</div>`}
+      <div style="padding:12px">
+        <p style="font-size:10px;color:#B85F72;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin:0 0 2px">${p.brand || ''}</p>
+        <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 6px;line-height:1.3">${p.name}</p>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span style="font-size:15px;font-weight:bold;color:#111">${fmt(p.price)}</span>
+          ${p.oldPrice ? `<span style="font-size:11px;color:#999;text-decoration:line-through">${fmt(p.oldPrice)}</span>` : ''}
+          ${discount > 0 ? `<span style="font-size:10px;font-weight:bold;color:#B85F72;background:#FBF0F2;padding:1px 5px;border-radius:20px">-${discount}%</span>` : ''}
+        </div>
+        ${typeof p.stock === 'number' && p.stock === 0 ? `<p style="font-size:10px;color:#ef4444;margin:4px 0 0">Agotado</p>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  w.document.write(`<!DOCTYPE html><html lang="es"><head>
+    <meta charset="utf-8"><title>Catálogo JD Virtual</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;padding:24px;color:#111;background:#fff}
+      .header{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #B85F72}
+      .title{font-size:28px;font-weight:bold;color:#B85F72}
+      .subtitle{color:#888;font-size:13px;margin-top:4px}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+      .print-btn{display:block;margin:24px auto 0;padding:10px 28px;background:#B85F72;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer}
+      @media print{.print-btn{display:none!important}body{padding:12px}.grid{grid-template-columns:repeat(3,1fr);gap:10px}}
+    </style>
+  </head><body>
+    <div class="header">
+      <div class="title">JD Virtual Store</div>
+      <div class="subtitle">Catálogo de productos · ${new Date().toLocaleDateString('es-CR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+      <div class="subtitle">${active.length} productos disponibles</div>
+    </div>
+    <div class="grid">${cards}</div>
+    <button class="print-btn" onclick="window.print()">Imprimir / Guardar PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
 export default function AdminProducts() {
   const [search, setSearch] = useState('');
   const [cat, setCat]       = useState('todos');
@@ -213,11 +260,20 @@ export default function AdminProducts() {
           <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-none">Productos</h1>
           <p className="text-ink-400 text-sm mt-1">{activeCount} activos de {products.length} en total</p>
         </div>
-        <Link to="/admin/productos/nuevo"
-          className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-btn whitespace-nowrap">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nuevo producto
-        </Link>
+        <div className="flex items-center gap-2">
+          {products.length > 0 && (
+            <button onClick={() => generateCatalog(products)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-cream-200 text-ink-600 hover:bg-cream-50 transition-colors bg-white shadow-sm whitespace-nowrap">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Catálogo PDF
+            </button>
+          )}
+          <Link to="/admin/productos/nuevo"
+            className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-btn whitespace-nowrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo producto
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

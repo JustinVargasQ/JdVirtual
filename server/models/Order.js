@@ -18,12 +18,21 @@ const orderSchema = new Schema(
     customer: {
       name:     { type: String, required: true },
       phone:    { type: String, required: true },
+      email:    { type: String, default: '' },
       province: { type: String, required: true },
       address:  { type: String, required: true },
       notes:    { type: String, default: '' },
+      lat:      { type: Number, default: null },
+      lng:      { type: Number, default: null },
     },
     items:         [orderItemSchema],
     subtotal:      { type: Number, required: true },
+    discount:      { type: Number, default: 0 },
+    coupon: {
+      code:        { type: String, default: null },
+      discount:    { type: Number, default: 0 },
+      freeShipping:{ type: Boolean, default: false },
+    },
     shippingCost:  { type: Number, default: 0 },
     total:         { type: Number, required: true },
     shippingMethod:{ type: String, enum: ['correos', 'express', 'pickup'], default: 'correos' },
@@ -32,19 +41,19 @@ const orderSchema = new Schema(
       enum: ['pendiente', 'confirmado', 'preparando', 'enviado', 'entregado', 'cancelado'],
       default: 'pendiente',
     },
-    whatsappSent: { type: Boolean, default: false },
+    whatsappSent:   { type: Boolean, default: false },
+    internalNotes:  { type: String, default: '' },
   },
   { timestamps: true }
 );
 
 // Auto-generate order number before save
-orderSchema.pre('save', async function (next) {
+orderSchema.pre('save', async function () {
   if (this.isNew) {
     const count = await this.constructor.countDocuments();
     const year  = new Date().getFullYear();
     this.orderNumber = `JD-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 orderSchema.index({ status: 1, createdAt: -1 });

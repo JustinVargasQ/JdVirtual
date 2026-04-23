@@ -5,6 +5,7 @@ import useCart from '../../hooks/useCart';
 import useWishlist from '../../hooks/useWishlist';
 import { formatCRC } from '../../lib/currency';
 import api from '../../lib/api';
+import { trackSearch } from '../../lib/analytics';
 
 const ANNOUNCEMENTS = [
   '🚚 Envíos a todo Costa Rica · Desde ₡2,000',
@@ -19,6 +20,7 @@ const CATEGORIES = [
   { label: 'Perfumes',   path: '/?cat=perfumes'   },
   { label: 'Cabello',    path: '/?cat=cabello'    },
   { label: 'Todo',       path: '/'                },
+  { label: '🏷️ Ofertas', path: '/ofertas'         },
 ];
 
 /* ── Icons ── */
@@ -132,11 +134,27 @@ export default function Navbar() {
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim()) {
+      trackSearch(query.trim());
       navigate(`/?q=${encodeURIComponent(query.trim())}`);
       setSearchOpen(false);
       setQuery('');
       setShowSugg(false);
       setSuggestions([]);
+      setTimeout(() => {
+        document.getElementById('tienda')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    }
+  };
+
+  const clearSearch = () => {
+    setQuery('');
+    setSuggestions([]);
+    setShowSugg(false);
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('q')) {
+      params.delete('q');
+      const qs = params.toString();
+      navigate(qs ? `/?${qs}` : '/');
     }
   };
 
@@ -208,7 +226,7 @@ export default function Navbar() {
                   className="flex-1 bg-transparent text-sm text-ink-900 placeholder-ink-400 outline-none w-0"
                 />
                 {query && (
-                  <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setShowSugg(false); }}
+                  <button type="button" onClick={clearSearch}
                     className="text-ink-300 hover:text-ink-600 transition-colors text-lg leading-none">×</button>
                 )}
               </form>

@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const Order   = require('../models/Order');
 
 /* ---------- Public ---------- */
 
@@ -34,6 +35,43 @@ exports.getCategories = async (req, res, next) => {
   try {
     const cats = await Product.distinct('category', { isActive: true });
     res.json(['todos', ...cats.sort()]);
+  } catch (err) { next(err); }
+};
+
+exports.topSellers = async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 4, 12);
+    const since = new Date();
+    since.setDate(since.getDate() - 60); // last 60 days
+
+    const rows = await Order.aggregate([
+      { $match: { createdAt: { $gte: since }, status: { $ne: 'cancelado' } } },
+      { $unwind: '$items' },
+      { $group: { _id: '$items.productId', units: { $sum: '$items.qty' } } },
+      { $sort: { units: -1 } },
+      { $limit: limit * 2 }, // fetch extra in case some are inactive
+    ]);
+
+    const ids = rows.map((r) => r._id).filter(Boolean);
+    const products = await Product.find({ _id: { $in: ids }, isActive: true }).limit(limit);
+
+    // Sort by order of top-sellers ranking
+    const sorted = ids
+      .map((id) => products.find((p) => String(p._id) === String(id)))
+      .filter(Boolean)
+      .slice(0, limit);
+
+    // Fallback: if not enough orders yet, fill with badge products
+    if (sorted.length < limit) {
+      const fallback = await Product.find({
+        isActive: true,
+        badge: { $nin: ['', null] },
+        _id: { $nin: sorted.map((p) => p._id) },
+      }).limit(limit - sorted.length);
+      sorted.push(...fallback);
+    }
+
+    res.json({ products: sorted });
   } catch (err) { next(err); }
 };
 

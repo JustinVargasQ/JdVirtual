@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate, useInView } from 'framer-motion';
 import ProductCard from '../components/ui/ProductCard';
 import FilterBar from '../components/ui/FilterBar';
@@ -961,15 +961,17 @@ function Catalog({ externalCat, catalogRef }) {
   const [animKey, setAnimKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  const cat   = searchParams.get('cat')   || 'todos';
-  const brand = searchParams.get('brand') || '';
-  const q     = searchParams.get('q')     || '';
+  const cat      = searchParams.get('cat')      || 'todos';
+  const brand    = searchParams.get('brand')    || '';
+  const q        = searchParams.get('q')        || '';
+  const minPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : '';
+  const maxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : '';
 
   const applyFilter = (updates) => {
     setSearchParams((prev) => {
       const np = new URLSearchParams(prev);
       Object.entries(updates).forEach(([k, v]) =>
-        v && v !== 'todos' ? np.set(k, v) : np.delete(k)
+        v && v !== 'todos' ? np.set(k, String(v)) : np.delete(k)
       );
       return np;
     });
@@ -984,8 +986,12 @@ function Catalog({ externalCat, catalogRef }) {
 
   const handleCat   = (c) => applyFilter({ cat: c });
   const handleBrand = (b) => applyFilter({ brand: b });
+  const handlePrice = ({ minPrice: mn, maxPrice: mx }) => applyFilter({ minPrice: mn, maxPrice: mx });
 
-  const { products, loading } = useProducts({ cat, brand, q });
+  const { products: rawProducts, loading } = useProducts({ cat, brand, q });
+  const products = rawProducts.filter((p) =>
+    (!minPrice || p.price >= minPrice) && (!maxPrice || p.price <= maxPrice)
+  );
 
   const catLabel = {
     todos: 'Todos los productos', ojos: 'Ojos', labios: 'Labios',
@@ -1022,13 +1028,20 @@ function Catalog({ externalCat, catalogRef }) {
             </div>
           </div>
           {q && (
-            <p className="text-ink-500 text-sm">
-              Resultados para: <strong className="text-ink-900">"{q}"</strong>
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-ink-500 text-sm">
+                Resultados para: <strong className="text-ink-900">"{q}"</strong>
+              </p>
+              <button
+                onClick={() => applyFilter({ q: '' })}
+                className="text-xs bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white font-semibold px-3 py-1 rounded-full transition-colors">
+                × Limpiar
+              </button>
+            </div>
           )}
         </div>
 
-        <FilterBar cat={cat} brand={brand} onCat={handleCat} onBrand={handleBrand} />
+        <FilterBar cat={cat} brand={brand} minPrice={minPrice} maxPrice={maxPrice} onCat={handleCat} onBrand={handleBrand} onPrice={handlePrice} />
 
         <AnimatePresence mode="wait">
           {loading ? (
@@ -1365,6 +1378,92 @@ function ShippingSection() {
   );
 }
 
+/* ─── Track Order Section ─── */
+function TrackOrderSection() {
+  const [num, setNum]   = useState('');
+  const navigate        = useNavigate();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const code = num.trim().toUpperCase();
+    if (code) navigate(`/pedido/${code}`);
+  };
+
+  return (
+    <section className="bg-white py-14 sm:py-20 border-t border-cream-100">
+      <div className="max-w-xl mx-auto px-4 sm:px-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}>
+          <span className="text-3xl mb-4 block">📦</span>
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 mb-2">¿Ya hiciste un pedido?</h2>
+          <p className="text-ink-400 text-sm mb-8">Ingresá tu número de orden para ver el estado en tiempo real.</p>
+          <form onSubmit={handleSubmit} className="flex gap-2 max-w-sm mx-auto">
+            <input
+              value={num}
+              onChange={(e) => setNum(e.target.value.toUpperCase())}
+              placeholder="JD-2025-0001"
+              className="flex-1 border border-cream-200 rounded-xl px-4 py-3 text-sm font-mono tracking-wider text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 transition-colors"
+            />
+            <motion.button
+              type="submit"
+              disabled={!num.trim()}
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+              className="bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-semibold px-5 py-3 rounded-xl transition-colors text-sm whitespace-nowrap">
+              Rastrear
+            </motion.button>
+          </form>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FAQ ─── */
+const FAQ_ITEMS = [
+  { q: '¿Cuanto demora el envio?', a: 'Por Correos de Costa Rica de 3 a 5 dias habiles. Express en la zona de Puntarenas en 24-48 horas. Pickup en El Roble coordinas la entrega por WhatsApp.' },
+  { q: '¿Como pago?', a: 'Aceptamos SINPE Movil, transferencia bancaria y pago en efectivo en el local. Te enviamos los datos al confirmar tu pedido por WhatsApp.' },
+  { q: '¿Los productos son originales?', a: 'Si, todos nuestros productos son 100% originales de marcas autenticas. Trabajamos directamente con distribuidores certificados.' },
+  { q: '¿Puedo cambiar o devolver un producto?', a: 'Si el producto llega danado o defectuoso hacemos el cambio sin costo. Escribinos por WhatsApp con fotos del producto y coordinamos.' },
+  { q: '¿Hacen envios a todo Costa Rica?', a: 'Si! Enviamos a las 7 provincias por medio de Correos de Costa Rica o servicio express segun tu ubicacion.' },
+  { q: '¿Tienen stock o hacen pedidos?', a: 'Manejamos stock disponible para entrega inmediata. Algunos productos se pueden pedir bajo solicitud, consultanos por WhatsApp.' },
+];
+
+function FaqSection() {
+  const [open, setOpen] = useState(null);
+  return (
+    <section className="py-16 sm:py-24 bg-white">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <span className="section-label">FAQ</span>
+          <h2 className="section-title">Preguntas frecuentes</h2>
+        </div>
+        <div className="space-y-3">
+          {FAQ_ITEMS.map((item, i) => (
+            <div key={i} className="border border-cream-200 rounded-2xl overflow-hidden">
+              <button onClick={() => setOpen(open === i ? null : i)}
+                className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-cream-50 transition-colors">
+                <span className="font-semibold text-ink-900 text-sm">{item.q}</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  className={`flex-shrink-0 text-rose-400 transition-transform ${open === i ? 'rotate-180' : ''}`}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              {open === i && (
+                <div className="px-5 pb-4 text-sm text-ink-500 leading-relaxed border-t border-cream-100 pt-3">
+                  {item.a}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── Floating WhatsApp — with pulse rings ─── */
 function FloatingWa() {
   return (
@@ -1420,6 +1519,8 @@ export default function Home() {
       <TestimonialsSection />
       <AboutSection />
       <ShippingSection />
+      <TrackOrderSection />
+      <FaqSection />
       <FloatingWa />
     </main>
   );

@@ -11,12 +11,17 @@ const productSchema = new Schema(
     description: { type: String, default: '' },
     features:    [{ type: String }],
     images:      [{ type: String }],          // URLs (Cloudinary o /uploads/...)
-    stock:       { type: Number, default: 99, min: 0 },
+    stock:       { type: Number, default: null, min: 0 },
     isActive:    { type: Boolean, default: true },
     badge:       { type: String, default: '' },
     badgeType:   { type: String, default: '' },
     rating:      { type: Number, default: 5, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0 },
+    variants: [{
+      name:    { type: String, required: true },
+      options: [{ type: String }],
+    }],
+    restockRequests: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

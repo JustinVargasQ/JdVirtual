@@ -17,6 +17,12 @@ const settingsSchema = new Schema(
     freeShippingFrom:    { type: Number, default: 25000, min: 0 },
 
     bankInfo: { type: String, default: '' },
+
+    promoBanner:       { type: String, default: '' },
+    promoBannerActive: { type: Boolean, default: false },
+    promoBannerColor:  { type: String, default: '#B85F72' },
+
+    notificationEmail: { type: String, default: '' },
   },
   { timestamps: true }
 );

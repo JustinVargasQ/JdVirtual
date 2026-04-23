@@ -1,6 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function Confirmation() {
+  const { state } = useLocation();
+  const orderNumber = state?.orderNumber;
+
   return (
     <main className="min-h-screen flex items-center justify-center px-4 pt-16">
       <div className="text-center max-w-md">
@@ -10,6 +13,15 @@ export default function Confirmation() {
           </svg>
         </div>
         <h1 className="font-display text-4xl font-semibold text-ink-900 mb-4">¡Pedido enviado!</h1>
+
+        {orderNumber && (
+          <div className="bg-rose-50 border border-rose-200 rounded-xl px-5 py-4 mb-6 inline-block">
+            <p className="text-xs text-rose-400 font-semibold uppercase tracking-wider mb-1">Tu número de pedido</p>
+            <p className="font-mono font-bold text-rose-600 text-2xl tracking-wider">{orderNumber}</p>
+            <p className="text-xs text-rose-400 mt-1">Guardalo para consultar el estado de tu pedido</p>
+          </div>
+        )}
+
         <p className="text-ink-500 leading-relaxed mb-8">
           Tu pedido fue enviado por WhatsApp. Estaremos confirmando los detalles y coordinando el envío contigo muy pronto.
         </p>
@@ -24,8 +36,14 @@ export default function Confirmation() {
           <Link to="/" className="inline-flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
             Seguir comprando
           </Link>
+          {orderNumber && (
+            <Link to={`/pedido/${orderNumber}`}
+              className="inline-flex items-center justify-center gap-2 border border-cream-200 hover:border-rose-300 text-ink-700 font-semibold px-6 py-3 rounded-xl transition-colors">
+              Ver estado del pedido
+            </Link>
+          )}
           <a href="https://wa.me/50688045100" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 border border-cream-200 hover:border-rose-300 text-ink-700 font-semibold px-6 py-3 rounded-xl transition-colors">
+            className="inline-flex items-center justify-center gap-2 border border-cream-200 hover:border-green-300 text-ink-700 font-semibold px-6 py-3 rounded-xl transition-colors">
             Abrir WhatsApp
           </a>
         </div>

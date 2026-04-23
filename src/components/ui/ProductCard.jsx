@@ -39,12 +39,14 @@ export default function ProductCard({ product, index = 0 }) {
   const [hovered, setHovered] = useState(false);
 
   const img = product.img || product.images?.[0] || '';
-  const discount = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
-  const isFav = has(product);
+  const discount  = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
+  const isFav     = has(product);
+  const outOfStock = product.stock !== undefined && product.stock !== null && product.stock === 0;
 
   const handleAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (outOfStock) return;
     addItem(product, 1);
     setAdded(true);
     openCart();
@@ -98,15 +100,23 @@ export default function ProductCard({ product, index = 0 }) {
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            {product.badge && (
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${BADGE_STYLES[product.badgeType] || BADGE_STYLES['']}`}>
-                {product.badge}
+            {outOfStock ? (
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-ink-500 text-white">
+                Agotado
               </span>
-            )}
-            {discount > 0 && (
-              <span className="text-[10px] font-bold bg-coral text-white px-2.5 py-1 rounded-full">
-                -{discount}%
-              </span>
+            ) : (
+              <>
+                {product.badge && (
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${BADGE_STYLES[product.badgeType] || BADGE_STYLES['']}`}>
+                    {product.badge}
+                  </span>
+                )}
+                {discount > 0 && (
+                  <span className="text-[10px] font-bold bg-coral text-white px-2.5 py-1 rounded-full">
+                    -{discount}%
+                  </span>
+                )}
+              </>
             )}
           </div>
 
@@ -116,17 +126,19 @@ export default function ProductCard({ product, index = 0 }) {
             animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 10 }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             className="absolute bottom-0 inset-x-0 p-3 flex gap-2">
-            <button onClick={handleAdd}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg ${added ? 'bg-green-500 text-white' : 'bg-white text-ink-900 hover:bg-ink-900 hover:text-white'}`}>
+            <button onClick={handleAdd} disabled={outOfStock}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg ${
+                outOfStock ? 'bg-ink-200 text-ink-400 cursor-not-allowed' :
+                added ? 'bg-green-500 text-white' : 'bg-white text-ink-900 hover:bg-ink-900 hover:text-white'
+              }`}>
               <CartPlusIcon />
-              {added ? '¡Agregado!' : 'Al carrito'}
+              {outOfStock ? 'Agotado' : added ? '¡Agregado!' : 'Al carrito'}
             </button>
-            <a href={`https://wa.me/50688045100?text=${encodeURIComponent(`Hola! Me interesa: ${product.name} a ${formatCRC(product.price)}`)}`}
-              target="_blank" rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`https://wa.me/50688045100?text=${encodeURIComponent(`Hola! Me interesa: ${product.name} a ${formatCRC(product.price)}`)}`, '_blank', 'noopener'); }}
               className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-lg transition-colors">
               <WaIcon />
-            </a>
+            </button>
           </motion.div>
         </div>
 

@@ -20,6 +20,7 @@ exports.update = async (req, res, next) => {
       'heroTitle', 'heroSub',
       'shippingCostCorreos', 'shippingCostExpress', 'freeShippingFrom',
       'bankInfo',
+      'notificationEmail',
     ];
     const patch = {};
     for (const k of allowed) {
