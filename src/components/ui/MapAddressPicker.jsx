@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { loadGoogleMaps, hasGoogleMapsKey } from '../../lib/loadGoogleMaps';
 
-const STORE_LOCATION = { lat: 9.9830986, lng: -84.7347965 };
+/* Neutral Costa Rica center — no confusión con la tienda */
+const CR_CENTER = { lat: 9.9281, lng: -84.0907 };
 
 export default function MapAddressPicker({
   value,
@@ -50,7 +51,6 @@ export default function MapAddressPicker({
 
       {open && (
         <MapPickerModal
-          initialCenter={picked || STORE_LOCATION}
           onClose={() => setOpen(false)}
           onConfirm={(result) => {
             setPicked(result);
@@ -64,16 +64,19 @@ export default function MapAddressPicker({
   );
 }
 
-function MapPickerModal({ initialCenter, onClose, onConfirm }) {
-  const mapRef = useRef(null);
+function MapPickerModal({ onClose, onConfirm }) {
+  const mapRef        = useRef(null);
   const mapInstanceRef = useRef(null);
-  const markerRef = useRef(null);
-  const geocoderRef = useRef(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [address, setAddress] = useState('');
-  const [coords, setCoords] = useState({ lat: initialCenter.lat, lng: initialCenter.lng });
-  const [geocoding, setGeocoding] = useState(false);
+  const markerRef     = useRef(null);
+  const geocoderRef   = useRef(null);
+
+  const [mapLoading, setMapLoading]   = useState(true);
+  const [mapError, setMapError]       = useState('');
+  const [address, setAddress]         = useState('');
+  const [coords, setCoords]           = useState(CR_CENTER);
+  const [geocoding, setGeocoding]     = useState(false);
+  const [locating, setLocating]       = useState(false);
+  const [locError, setLocError]       = useState('');
 
   const reverseGeocode = useCallback((pos) => {
     if (!geocoderRef.current) return;
@@ -83,11 +86,12 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
       if (status === 'OK' && results[0]) {
         setAddress(results[0].formatted_address);
       } else {
-        setAddress(`Ubicación: ${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`);
+        setAddress(`${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`);
       }
     });
   }, []);
 
+  /* Init map (no center en tienda — empieza en CR neutral) */
   useEffect(() => {
     let cancelled = false;
 
@@ -96,8 +100,8 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
         if (cancelled || !mapRef.current) return;
 
         const map = new google.maps.Map(mapRef.current, {
-          center: initialCenter,
-          zoom: 17,
+          center: CR_CENTER,
+          zoom: 8,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
@@ -106,15 +110,16 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
         });
 
         const marker = new google.maps.Marker({
-          position: initialCenter,
+          position: CR_CENTER,
           map,
           draggable: true,
           animation: google.maps.Animation.DROP,
+          visible: false,   // oculto hasta que el usuario elige
         });
 
         mapInstanceRef.current = map;
-        markerRef.current = marker;
-        geocoderRef.current = new google.maps.Geocoder();
+        markerRef.current      = marker;
+        geocoderRef.current    = new google.maps.Geocoder();
 
         const updateFromPos = (pos) => {
           setCoords({ lat: pos.lat(), lng: pos.lng() });
@@ -124,16 +129,16 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
         marker.addListener('dragend', () => updateFromPos(marker.getPosition()));
         map.addListener('click', (e) => {
           marker.setPosition(e.latLng);
+          marker.setVisible(true);
           updateFromPos(e.latLng);
         });
 
-        reverseGeocode(initialCenter);
-        setLoading(false);
+        setMapLoading(false);
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err.message || 'No se pudo cargar el mapa');
-          setLoading(false);
+          setMapError(err.message || 'No se pudo cargar el mapa');
+          setMapLoading(false);
         }
       });
 
@@ -142,20 +147,36 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
   }, []);
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setLocError('Tu dispositivo no soporta geolocalización.');
+      return;
+    }
+    setLocating(true);
+    setLocError('');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setLocating(false);
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         if (mapInstanceRef.current && markerRef.current) {
           mapInstanceRef.current.panTo(p);
           mapInstanceRef.current.setZoom(18);
           markerRef.current.setPosition(p);
+          markerRef.current.setVisible(true);
           setCoords(p);
           reverseGeocode(p);
         }
       },
-      () => setError('No se pudo obtener tu ubicación. Activá GPS o permitís el acceso.'),
-      { enableHighAccuracy: true, timeout: 10000 }
+      (err) => {
+        setLocating(false);
+        if (err.code === 1) {
+          setLocError('Permiso denegado. En tu navegador, permitís el acceso a la ubicación y volvés a intentar.');
+        } else if (err.code === 2) {
+          setLocError('No se pudo obtener tu posición. Verificá que el GPS esté activo.');
+        } else {
+          setLocError('Se agotó el tiempo. Intentá de nuevo o ubicáte en el mapa manualmente.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
@@ -164,7 +185,9 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+      onClick={onClose}>
       <div
         className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}>
@@ -173,7 +196,7 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-cream-100">
           <div>
             <h3 className="font-display text-lg font-semibold text-ink-900">Elegí tu ubicación</h3>
-            <p className="text-[11px] text-ink-400">Tocá el mapa o arrastrá el pin 📍</p>
+            <p className="text-[11px] text-ink-400">Tocá el mapa o usá tu GPS para marcar tu dirección</p>
           </div>
           <button type="button" onClick={onClose} className="p-2 hover:bg-cream-50 rounded-lg transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -182,44 +205,84 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
           </button>
         </div>
 
-        {/* Map */}
-        <div className="relative bg-cream-50" style={{ height: '50vh', minHeight: 320 }}>
-          {loading && (
-            <div className="absolute inset-0 flex items-center justify-center z-10 bg-cream-50">
-              <p className="text-ink-400 text-sm">Cargando mapa...</p>
+        {/* ── Botón GPS prominente ── */}
+        <div className="px-4 sm:px-5 pt-3 pb-2">
+          <button
+            type="button"
+            onClick={useMyLocation}
+            disabled={locating || mapLoading}
+            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 disabled:opacity-60"
+            style={{
+              background: locating
+                ? 'linear-gradient(135deg,#6366f1,#4f46e5)'
+                : 'linear-gradient(135deg,#B85F72,#93485A)',
+              color: '#fff',
+              boxShadow: '0 4px 18px rgba(184,95,114,0.35)',
+            }}>
+            {locating ? (
+              <>
+                <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                Obteniendo tu ubicación...
+              </>
+            ) : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <line x1="12" y1="2" x2="12" y2="5"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                  <line x1="2" y1="12" x2="5" y2="12"/>
+                  <line x1="19" y1="12" x2="22" y2="12"/>
+                </svg>
+                📍 Localizarme automáticamente
+              </>
+            )}
+          </button>
+
+          {/* Error de geolocalización — inline, no bloquea el mapa */}
+          {locError && (
+            <div className="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠️</span>
+              <p className="text-xs text-amber-700 leading-relaxed">{locError}</p>
             </div>
           )}
-          {error && (
+
+          <p className="text-center text-[11px] text-ink-400 mt-2">— o tocá el mapa para marcar tu punto —</p>
+        </div>
+
+        {/* Map */}
+        <div className="relative bg-cream-50 flex-1" style={{ minHeight: 280 }}>
+          {mapLoading && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 bg-cream-50">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-7 h-7 border-2 border-rose-300 border-t-rose-500 rounded-full animate-spin" />
+                <p className="text-ink-400 text-sm">Cargando mapa...</p>
+              </div>
+            </div>
+          )}
+          {mapError && (
             <div className="absolute inset-0 flex items-center justify-center z-10 bg-cream-50 p-6 text-center">
-              <p className="text-red-500 text-sm">{error}</p>
+              <div>
+                <p className="text-2xl mb-2">🗺️</p>
+                <p className="text-red-500 text-sm">{mapError}</p>
+              </div>
             </div>
           )}
           <div ref={mapRef} className="w-full h-full" />
-
-          {/* My location button — overlay */}
-          {!loading && !error && (
-            <button
-              type="button"
-              onClick={useMyLocation}
-              className="absolute bottom-3 right-3 bg-white hover:bg-cream-50 shadow-lg rounded-full p-3 transition-colors border border-cream-200"
-              title="Usar mi ubicación actual">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B85F72" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <line x1="12" y1="2" x2="12" y2="5"/>
-                <line x1="12" y1="19" x2="12" y2="22"/>
-                <line x1="2" y1="12" x2="5" y2="12"/>
-                <line x1="19" y1="12" x2="22" y2="12"/>
-              </svg>
-            </button>
-          )}
         </div>
 
         {/* Address preview + actions */}
-        <div className="px-4 sm:px-5 py-3.5 space-y-3 bg-cream-50">
+        <div className="px-4 sm:px-5 py-3.5 space-y-3 bg-cream-50 border-t border-cream-100">
           <div>
             <p className="text-[10px] font-bold text-ink-400 uppercase tracking-widest mb-1">Dirección detectada</p>
             <p className="text-sm text-ink-800 leading-snug min-h-[2.5em]">
-              {geocoding ? <span className="text-ink-300">Obteniendo dirección...</span> : (address || '—')}
+              {geocoding
+                ? <span className="text-ink-300 italic">Obteniendo dirección...</span>
+                : address
+                  ? address
+                  : <span className="text-ink-300 italic">Usá el GPS o tocá el mapa para marcar tu ubicación</span>
+              }
             </p>
           </div>
 
@@ -233,7 +296,7 @@ function MapPickerModal({ initialCenter, onClose, onConfirm }) {
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={loading || !!error || !address}
+              disabled={mapLoading || !!mapError || !address || geocoding}
               className="flex-[2] px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors shadow-btn">
               Confirmar ubicación
             </button>
