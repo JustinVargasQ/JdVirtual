@@ -941,14 +941,75 @@ function GuaranteeSection() {
 /* ─── Skeleton card ─── */
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl overflow-hidden border border-cream-200">
-      <div className="skeleton aspect-square" />
-      <div className="p-4 space-y-2">
-        <div className="skeleton h-3 w-2/3 rounded" />
-        <div className="skeleton h-4 w-full rounded" />
-        <div className="skeleton h-4 w-4/5 rounded" />
-        <div className="skeleton h-5 w-1/3 rounded mt-2" />
+    <div className="rounded-2xl overflow-hidden border border-cream-100 bg-white">
+      <div className="skeleton" style={{ aspectRatio: '1' }} />
+      <div className="p-4 space-y-2.5">
+        <div className="skeleton h-2.5 w-1/3 rounded-full" />
+        <div className="skeleton h-3.5 w-full rounded-full" />
+        <div className="skeleton h-3.5 w-4/5 rounded-full" />
+        <div className="flex gap-1 mt-0.5">
+          {[0,0,0,0,0].map((_, i) => (
+            <div key={i} className="skeleton w-3 h-3 rounded-sm" />
+          ))}
+        </div>
+        <div className="skeleton h-5 w-2/5 rounded-full mt-1" />
       </div>
+    </div>
+  );
+}
+
+/* ─── Stories row — horizontal scrollable category bubbles ─── */
+const STORIES = [
+  { label: 'Todos',      cat: 'todos',     emoji: '✨', bg: 'linear-gradient(135deg,#B85F72,#93485A)' },
+  { label: 'Skin care',  cat: 'skincare',  img: '/imgs/Skincare.jpeg'   },
+  { label: 'Maquillaje', cat: 'maquillaje',img: '/imgs/Maquillaje.jpeg' },
+  { label: 'Accesorios', cat: 'accesorios',img: '/imgs/Accesorios.jpeg' },
+  { label: 'Perfumes',   cat: 'perfumes',  img: '/imgs/Perfume.jpeg'    },
+  { label: 'Cabello',    cat: 'cabello',   img: '/imgs/Cabello.jpeg'    },
+];
+
+function StoriesRow({ cat, onCat }) {
+  return (
+    <div className="flex gap-5 overflow-x-auto scrollbar-hide pb-2 mb-8 -mx-1 px-1">
+      {STORIES.map((s, i) => {
+        const isActive = cat === s.cat;
+        return (
+          <motion.button
+            key={s.cat}
+            onClick={() => onCat(s.cat)}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.4, ease: [0.3, 1, 0.3, 1] }}
+            className="flex flex-col items-center gap-2 flex-shrink-0 group focus:outline-none">
+
+            {/* Circle */}
+            <div className={`relative w-[62px] h-[62px] rounded-full p-[2.5px] transition-all duration-300 ${
+              isActive
+                ? 'ring-2 ring-rose-500 ring-offset-2 ring-offset-white shadow-md'
+                : 'ring-1 ring-cream-200 hover:ring-rose-300 hover:ring-offset-1 hover:ring-offset-white'
+            }`}>
+              <div className="w-full h-full rounded-full overflow-hidden">
+                {s.img ? (
+                  <img src={s.img} alt={s.label}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xl"
+                    style={{ background: s.bg }}>
+                    {s.emoji}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Label */}
+            <span className={`text-[11px] font-semibold leading-tight transition-colors whitespace-nowrap ${
+              isActive ? 'text-rose-500' : 'text-ink-500 group-hover:text-ink-800'
+            }`}>
+              {s.label}
+            </span>
+          </motion.button>
+        );
+      })}
     </div>
   );
 }
@@ -1040,6 +1101,8 @@ function Catalog({ externalCat, catalogRef }) {
             </div>
           )}
         </div>
+
+        <StoriesRow cat={cat} onCat={handleCat} />
 
         <FilterBar cat={cat} brand={brand} minPrice={minPrice} maxPrice={maxPrice} onCat={handleCat} onBrand={handleBrand} onPrice={handlePrice} />
 

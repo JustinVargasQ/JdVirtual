@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProduct, useProducts } from '../hooks/useProducts';
 import useCart from '../hooks/useCart';
 import useWhatsApp from '../hooks/useWhatsApp';
@@ -236,9 +237,28 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center pt-24">
-        <div className="w-8 h-8 border-2 border-rose-300 border-t-rose-500 rounded-full animate-spin" />
-      </div>
+      <main className="pt-24 pb-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-4 w-48 skeleton rounded-full mb-10" />
+          <div className="grid md:grid-cols-2 gap-10 lg:gap-16">
+            {/* Image skeleton */}
+            <div className="flex gap-3">
+              <div className="flex flex-col gap-2 w-[70px] flex-shrink-0">
+                {[0,1,2].map((i) => <div key={i} className="w-[70px] h-[70px] skeleton rounded-xl" />)}
+              </div>
+              <div className="flex-1 skeleton rounded-2xl" style={{ aspectRatio: '1' }} />
+            </div>
+            {/* Info skeleton */}
+            <div className="space-y-4">
+              <div className="skeleton h-6 w-32 rounded-full" />
+              <div className="skeleton h-10 w-3/4 rounded-xl" />
+              <div className="skeleton h-10 w-2/4 rounded-xl" />
+              <div className="skeleton h-14 w-full rounded-2xl mt-6" />
+              <div className="skeleton h-14 w-full rounded-2xl" />
+            </div>
+          </div>
+        </div>
+      </main>
     );
   }
 
@@ -357,7 +377,11 @@ export default function ProductDetail() {
           </div>
 
           {/* ── Right: Product info ── */}
-          <div className="flex flex-col">
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.55, ease: [0.3, 1, 0.3, 1], delay: 0.1 }}
+            className="flex flex-col">
 
             {/* Delivery estimate */}
             <div className="flex items-center gap-2 text-sm font-medium text-ink-600 bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 mb-5 w-fit">
@@ -504,19 +528,25 @@ export default function ProductDetail() {
             </div>
 
             {/* Trust badges */}
-            <div className="grid grid-cols-3 gap-2 border-t border-cream-100 pt-5">
+            <div className="grid grid-cols-3 gap-2.5 border-t border-cream-100 pt-5">
               {[
-                { icon: <ShieldIcon />,    label: 'Pago seguro' },
-                { icon: <StarBadgeIcon />, label: 'Producto original' },
-                { icon: <TruckIcon />,     label: 'Envío coordinado' },
-              ].map(({ icon, label }) => (
-                <div key={label} className="flex flex-col items-center gap-1.5 text-center">
-                  <span className="text-rose-400">{icon}</span>
-                  <span className="text-[11px] text-ink-500 font-medium leading-tight">{label}</span>
-                </div>
+                { icon: <ShieldIcon />,    label: 'Pago seguro',       bg: 'rgba(16,185,129,0.1)',  color: '#059669' },
+                { icon: <StarBadgeIcon />, label: 'Producto original', bg: 'rgba(184,95,114,0.1)',  color: '#B85F72' },
+                { icon: <TruckIcon />,     label: 'Envío coordinado',  bg: 'rgba(59,130,246,0.1)',  color: '#3b82f6' },
+              ].map(({ icon, label, bg, color }, i) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 + i * 0.1 }}
+                  className="flex flex-col items-center gap-2 text-center p-3 rounded-xl"
+                  style={{ background: bg }}>
+                  <span style={{ color }}>{icon}</span>
+                  <span className="text-[11px] font-semibold leading-tight" style={{ color }}>{label}</span>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
@@ -539,21 +569,83 @@ export default function ProductDetail() {
       {/* ── Reviews ── */}
       <ReviewsSection product={product} />
 
+      {/* ── Mobile sticky buy bar ── */}
+      <AnimatePresence>
+        {!added && (
+          <motion.div
+            initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            className="fixed bottom-0 inset-x-0 z-40 p-3 sm:hidden"
+            style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <div className="flex gap-2.5 max-w-md mx-auto">
+              <button
+                onClick={handleAdd}
+                disabled={product.stock === 0}
+                className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all ${
+                  product.stock === 0 ? 'bg-cream-200 text-ink-400' :
+                  added ? 'bg-green-500 text-white' : 'bg-rose-500 hover:bg-rose-600 text-white shadow-btn'
+                }`}>
+                {added ? '✓ Agregado' : product.stock === 0 ? 'Agotado' : 'Añadir al carrito'}
+              </button>
+              <button onClick={handleBuyWa}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1db954] text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-lg">
+                <WaIcon /> WhatsApp
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Zoom lightbox ── */}
-      {zoomed && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setZoomed(false)}>
-          <img src={mainImg} alt={product.name}
-            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
-            onClick={(e) => e.stopPropagation()} />
-          <button
-            onClick={() => setZoomed(false)}
-            className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center text-white text-xl transition-colors">
-            ×
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {zoomed && (
+          <motion.div
+            key="lightbox"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
+            style={{ background: 'rgba(10,6,8,0.92)', backdropFilter: 'blur(12px)' }}
+            onClick={() => setZoomed(false)}>
+
+            {/* Image */}
+            <motion.img
+              src={mainImg}
+              alt={product.name}
+              initial={{ scale: 0.88, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.88, opacity: 0 }}
+              transition={{ duration: 0.28, ease: [0.3, 1, 0.3, 1] }}
+              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+              style={{ maxHeight: '90vh' }}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            {/* Thumbnail strip */}
+            {images.length > 1 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2"
+                onClick={(e) => e.stopPropagation()}>
+                {images.map((src, i) => (
+                  <button key={i} onClick={() => setActiveImg(i)}
+                    className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                      activeImg === i ? 'border-white' : 'border-white/30 opacity-60 hover:opacity-100'
+                    }`}>
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Close */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.15 }}
+              onClick={() => setZoomed(false)}
+              className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 flex items-center justify-center text-white text-2xl font-light transition-colors backdrop-blur-sm">
+              ×
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
