@@ -252,7 +252,7 @@ function MapPickerModal({ onClose, onConfirm }) {
         </div>
 
         {/* Map */}
-        <div className="relative bg-cream-50 flex-1" style={{ minHeight: 280 }}>
+        <div className="relative bg-cream-50" style={{ height: '45vh', minHeight: 320 }}>
           {mapLoading && (
             <div className="absolute inset-0 flex items-center justify-center z-10 bg-cream-50">
               <div className="flex flex-col items-center gap-3">
