@@ -26,22 +26,10 @@ export default function FilterBar({ cat, brand, minPrice, maxPrice, onCat, onBra
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Category pills + brand */}
+      {/* Brand + Price row */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
-            <button key={c} onClick={() => onCat(c)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                cat === c
-                  ? 'bg-rose-500 text-white shadow-btn'
-                  : 'bg-white text-ink-700 border border-cream-200 hover:border-rose-300 hover:text-rose-500'
-              }`}>
-              {catLabels[c] || c}
-            </button>
-          ))}
-        </div>
         <select value={brand} onChange={(e) => onBrand(e.target.value)}
-          className="ml-auto text-sm border border-cream-200 rounded-lg px-3 py-1.5 text-ink-700 bg-white focus:outline-none focus:border-rose-300 cursor-pointer">
+          className="text-sm border border-cream-200 rounded-lg px-3 py-1.5 text-ink-700 bg-white focus:outline-none focus:border-rose-300 cursor-pointer">
           <option value="">Todas las marcas</option>
           {brands.map((b) => <option key={b} value={b}>{b}</option>)}
         </select>
