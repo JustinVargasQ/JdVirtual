@@ -23,6 +23,8 @@ const settingsSchema = new Schema(
     promoBannerColor:  { type: String, default: '#B85F72' },
 
     notificationEmail: { type: String, default: '' },
+
+    autoConfirmOrders: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

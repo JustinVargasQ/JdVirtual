@@ -20,6 +20,7 @@ const DEFAULTS = {
   promoBannerActive: false,
   promoBannerColor: '#B85F72',
   notificationEmail: '',
+  autoConfirmOrders: true,
 };
 
 const inputCls  = 'w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white';
@@ -157,6 +158,31 @@ export default function AdminConfig() {
             <input type="number" min="0" value={form.freeShippingFrom} onChange={set('freeShippingFrom')} className={inputCls} />
             <p className="text-[11px] text-ink-400 mt-1">{form.freeShippingFrom > 0 ? formatCRC(form.freeShippingFrom) : 'Desactivado'}</p>
           </div>
+        </div>
+      </div>
+
+      {/* Pedidos */}
+      <div className={sectionCls}>
+        <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Pedidos</p>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-ink-900">Confirmar pedidos automáticamente</p>
+            <p className="text-[11px] text-ink-400 mt-1">
+              Los pedidos nuevos se marcan como <strong className="text-green-600">Confirmado</strong> al crearse.
+              Si está desactivado, entran como <strong className="text-yellow-600">Pendiente</strong> para que los revisés a mano.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer flex-shrink-0 pt-1">
+            <span className="text-xs text-ink-500 font-medium">{form.autoConfirmOrders ? 'Activo' : 'Inactivo'}</span>
+            <div className="relative">
+              <input type="checkbox" checked={form.autoConfirmOrders} onChange={set('autoConfirmOrders')} className="sr-only" />
+              <div onClick={() => { setForm(f => ({ ...f, autoConfirmOrders: !f.autoConfirmOrders })); setDirty(true); }}
+                className={`w-10 h-6 rounded-full transition-colors cursor-pointer ${form.autoConfirmOrders ? 'bg-rose-500' : 'bg-ink-200'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.autoConfirmOrders ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+            </div>
+          </label>
         </div>
       </div>
 

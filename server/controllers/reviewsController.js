@@ -1,10 +1,14 @@
-const KEY      = process.env.GOOGLE_MAPS_KEY;
-const PLACE_ID = process.env.GOOGLE_PLACE_ID;
-
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 let cache = { data: null, expiresAt: 0 };
 
+// Read env at request time so we don't freeze a missing value at module-load.
+const getConfig = () => ({
+  KEY:      process.env.GOOGLE_MAPS_KEY || process.env.GOOGLE_SERVER_MAPS_KEY,
+  PLACE_ID: process.env.GOOGLE_PLACE_ID,
+});
+
 async function fetchFromGoogle() {
+  const { KEY, PLACE_ID } = getConfig();
   const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
   url.searchParams.set('place_id', PLACE_ID);
   url.searchParams.set('fields', 'name,rating,user_ratings_total,reviews,url');
@@ -13,10 +17,13 @@ async function fetchFromGoogle() {
   url.searchParams.set('key', KEY);
 
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Google Places API ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 
   const body = await res.json();
-  if (body.status !== 'OK') throw new Error(`Google Places status: ${body.status}`);
+  if (body.status !== 'OK') {
+    const detail = body.error_message ? ` — ${body.error_message}` : '';
+    throw new Error(`Places API ${body.status}${detail}`);
+  }
 
   const r = body.result;
   return {
@@ -41,8 +48,10 @@ exports.refresh = async (req, res, next) => {
 };
 
 exports.get = async (req, res) => {
+  const { KEY, PLACE_ID } = getConfig();
   if (!KEY || !PLACE_ID) {
-    return res.status(503).json({ error: 'Reseñas no configuradas' });
+    console.warn('[reviews] Missing env vars — KEY:', Boolean(KEY), 'PLACE_ID:', Boolean(PLACE_ID));
+    return res.status(503).json({ error: 'Reseñas no configuradas', missing: { KEY: !KEY, PLACE_ID: !PLACE_ID } });
   }
 
   const now = Date.now();
@@ -57,6 +66,7 @@ exports.get = async (req, res) => {
   } catch (err) {
     console.error('[reviews] Google fetch failed:', err.message);
     if (cache.data) return res.json({ ...cache.data, cached: true, stale: true });
-    res.status(502).json({ error: 'No se pudieron obtener las reseñas' });
+    // Surface Google's reason in the response so the admin can diagnose from the browser console.
+    res.status(502).json({ error: 'No se pudieron obtener las reseñas', detail: err.message });
   }
 };

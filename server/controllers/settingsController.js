@@ -21,6 +21,8 @@ exports.update = async (req, res, next) => {
       'shippingCostCorreos', 'shippingCostExpress', 'freeShippingFrom',
       'bankInfo',
       'notificationEmail',
+      'promoBanner', 'promoBannerActive', 'promoBannerColor',
+      'autoConfirmOrders',
     ];
     const patch = {};
     for (const k of allowed) {

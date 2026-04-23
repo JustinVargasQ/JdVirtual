@@ -13,7 +13,7 @@ exports.create = async (req, res, next) => {
       customer,
       items,
       subtotal,
-      shippingCost = 0,
+      shippingCost: rawShippingCost = 0,
       shippingMethod = 'correos',
       coupon: couponData = null,
     } = req.body;
@@ -22,20 +22,59 @@ exports.create = async (req, res, next) => {
       return res.status(400).json({ error: 'Datos del pedido incompletos' });
     }
 
-    const discount = Number(couponData?.discount) || 0;
-    const total    = Math.max(0, subtotal - discount) + shippingCost;
+    const settings       = await Settings.findOne({ key: 'main' });
+    const autoConfirm    = settings?.autoConfirmOrders !== false; // default true
+    const initialStatus  = autoConfirm ? 'confirmado' : 'pendiente';
+
+    // Re-validate coupon server-side — never trust client-sent discount.
+    // Atomically claim one use if maxUses has free slots.
+    let discount     = 0;
+    let freeShipping = false;
+    let appliedCode  = null;
+
+    if (couponData?.code) {
+      const code = String(couponData.code).toUpperCase();
+      const claimed = await Coupon.findOneAndUpdate(
+        {
+          code,
+          isActive: true,
+          $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+          $expr: {
+            $or: [
+              { $eq: ['$maxUses', 0] },
+              { $lt: ['$usedCount', '$maxUses'] },
+            ],
+          },
+        },
+        { $inc: { usedCount: 1 } },
+        { new: true }
+      );
+
+      if (claimed && subtotal >= (claimed.minOrder || 0)) {
+        discount     = claimed.computeDiscount(subtotal, rawShippingCost);
+        freeShipping = claimed.type === 'shipping';
+        appliedCode  = claimed.code;
+      } else if (claimed) {
+        // Claimed a use but subtotal below minOrder — refund the use.
+        await Coupon.updateOne({ _id: claimed._id }, { $inc: { usedCount: -1 } });
+      }
+    }
+
+    const shippingCost = freeShipping ? 0 : rawShippingCost;
+    const total        = Math.max(0, subtotal - discount) + shippingCost;
 
     const order = await Order.create({
       customer,
       items,
       subtotal,
       discount,
-      coupon: couponData?.code
-        ? { code: couponData.code, discount, freeShipping: Boolean(couponData.freeShipping) }
+      coupon: appliedCode
+        ? { code: appliedCode, discount, freeShipping }
         : undefined,
       shippingCost,
       total,
       shippingMethod,
+      status:       initialStatus,
       whatsappSent: true,
     });
 
@@ -50,14 +89,6 @@ exports.create = async (req, res, next) => {
           : null
       )
     );
-
-    // Increment coupon usage after order is saved
-    if (couponData?.code) {
-      await Coupon.findOneAndUpdate(
-        { code: String(couponData.code).toUpperCase() },
-        { $inc: { usedCount: 1 } }
-      );
-    }
 
     broadcast('new-order', { orderNumber: order.orderNumber, customer: customer.name });
 
@@ -123,8 +154,25 @@ exports.updateStatus = async (req, res, next) => {
     const allowed = ['pendiente', 'confirmado', 'preparando', 'enviado', 'entregado', 'cancelado'];
     if (!allowed.includes(status)) return res.status(400).json({ error: 'Estado inválido' });
 
+    const before = await Order.findById(req.params.id);
+    if (!before) return res.status(404).json({ error: 'Pedido no encontrado' });
+
     const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true });
-    if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+    // Refund coupon usage if cancelling; re-consume if un-cancelling.
+    if (before.coupon?.code && before.status !== status) {
+      if (status === 'cancelado' && before.status !== 'cancelado') {
+        await Coupon.updateOne(
+          { code: before.coupon.code, usedCount: { $gt: 0 } },
+          { $inc: { usedCount: -1 } }
+        );
+      } else if (before.status === 'cancelado' && status !== 'cancelado') {
+        await Coupon.updateOne(
+          { code: before.coupon.code },
+          { $inc: { usedCount: 1 } }
+        );
+      }
+    }
 
     sendCustomerStatusUpdate(order, status).catch(() => {});
 
