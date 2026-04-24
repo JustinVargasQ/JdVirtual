@@ -6,7 +6,6 @@ const path          = require('path');
 const helmet        = require('helmet');
 const rateLimit     = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
-const hpp           = require('hpp');
 
 const authRoutes          = require('./routes/auth');
 const productRoutes       = require('./routes/products');
@@ -67,9 +66,6 @@ app.use(mongoSanitize({
     console.warn(`⚠️  Mongo sanitize: clave sospechosa "${key}" en ${req.path}`);
   },
 }));
-
-/* ─── HTTP Parameter Pollution prevention ─── */
-app.use(hpp());
 
 /* ─── Rate limiters ─── */
 const authLimiter = rateLimit({
