@@ -5,7 +5,7 @@ const cors          = require('cors');
 const path          = require('path');
 const helmet        = require('helmet');
 const rateLimit     = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
+const mongoSanitize = require('./middleware/sanitize');
 
 const authRoutes          = require('./routes/auth');
 const productRoutes       = require('./routes/products');
