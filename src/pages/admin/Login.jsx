@@ -114,9 +114,6 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-ink-400 mt-5">
-            Demo: <span className="text-ink-600 font-medium">admin@jdvirtual.com</span> / <span className="text-ink-600 font-medium">jd2024</span>
-          </p>
         </div>
       </div>
     </div>
