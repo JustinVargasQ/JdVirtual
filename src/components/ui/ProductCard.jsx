@@ -253,6 +253,23 @@ export default function ProductCard({ product, index = 0 }) {
                 <span className="text-xs text-ink-300 line-through">{formatCRC(product.oldPrice)}</span>
               )}
             </div>
+
+            {/* Savings chip */}
+            {product.oldPrice && discount > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, ease: [0.3, 1, 0.3, 1] }}
+                className="mt-2"
+              >
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100/80 px-2.5 py-0.5 rounded-full">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Ahorrás {formatCRC(product.oldPrice - product.price)}
+                </span>
+              </motion.div>
+            )}
           </div>
         </Link>
       </motion.div>

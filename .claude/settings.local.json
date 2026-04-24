@@ -7,7 +7,17 @@
       "Bash(npm install *)",
       "Bash(./node_modules/.bin/vite build *)",
       "Bash(npx eslint *)",
-      "Bash(curl -s http://localhost:4000/api/reviews)"
+      "Bash(curl -s http://localhost:4000/api/reviews)",
+      "Bash(npx tsc *)",
+      "Bash(node --check index.js)",
+      "Bash(node --check controllers/authController.js)",
+      "Bash(node --check controllers/orderController.js)",
+      "Bash(node --check middleware/upload.js)",
+      "Bash(node -e \"console.log\\(require\\('dotenv'\\).config\\(\\).parsed ? 'env ok' : 'no env'\\)\")",
+      "Bash(node -e \"const c=require\\('dotenv'\\).config\\(\\).parsed||{}; console.log\\(JSON.stringify\\({hasJWT: !!c.JWT_SECRET, jwtLen: \\(c.JWT_SECRET||''\\).length, hasAdmin: !!c.ADMIN_EMAIL, jwtExpires: c.JWT_EXPIRES||'no-set', hasClientUrl: !!c.CLIENT_URL, hasMongo: !!c.MONGO_URI}\\)\\)\")",
+      "Bash(node -e \"const c=require\\('crypto'\\); console.log\\('JWT_SECRET='+c.randomBytes\\(48\\).toString\\('hex'\\)\\)\")",
+      "Bash(node --check \"c:\\\\Users\\\\justi\\\\Desktop\\\\Zayin\\\\JdVirtual\\\\server\\\\scripts\\\\change-admin-password.js\")",
+      "Bash(node -e \"const e=require\\('dotenv'\\).config\\(\\).parsed||{}; console.log\\(JSON.stringify\\({CLIENT_URL:e.CLIENT_URL, MONGO_URI: e.MONGO_URI ? e.MONGO_URI.replace\\(/:\\([^:@]+\\)@/,':<PASS>@'\\) : 'not-set', hasGoogleKey: !!e.GOOGLE_MAPS_KEY||!!e.VITE_GOOGLE_MAPS_KEY}\\)\\)\")"
     ]
   }
 }

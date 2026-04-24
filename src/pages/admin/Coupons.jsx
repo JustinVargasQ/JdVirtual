@@ -23,15 +23,32 @@ function toIsoDateTime(d) {
   return new Date(dt - offset).toISOString().slice(0, 16);
 }
 
+const STATUS_FILTERS = [
+  { key: 'todos',    label: 'Todos'    },
+  { key: 'activos',  label: 'Activos'  },
+  { key: 'vencidos', label: 'Vencidos' },
+  { key: 'agotados', label: 'Agotados' },
+  { key: 'inactivos',label: 'Inactivos'},
+];
+
+const ADJECTIVES = ['SUPER','MEGA','ULTRA','VIP','PROMO','SALE','DEAL'];
+const generateCode = () => {
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const num = Math.floor(Math.random() * 90 + 10);
+  return `${adj}${num}`;
+};
+
 export default function AdminCoupons() {
-  const [coupons, setCoupons] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing]   = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
-  const [usesModal, setUsesModal] = useState(null); // { code, orders }
+  const [coupons, setCoupons]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [showForm, setShowForm]   = useState(false);
+  const [editing, setEditing]     = useState(null);
+  const [form, setForm]           = useState(emptyForm);
+  const [saving, setSaving]       = useState(false);
+  const [usesModal, setUsesModal] = useState(null);
   const [usesLoading, setUsesLoading] = useState(false);
+  const [search, setSearch]       = useState('');
+  const [statusFilter, setStatus] = useState('todos');
   const toast      = useToastStore();
   const askConfirm = useToastStore((s) => s.askConfirm);
 
@@ -141,14 +158,34 @@ export default function AdminCoupons() {
 
   const inputCls = 'w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white';
 
+  /* ── Derived stats ── */
+  const totalUses    = coupons.reduce((s, c) => s + (c.usedCount || 0), 0);
+  const activeCount  = coupons.filter((c) => c.isActive && !(c.expiresAt && new Date(c.expiresAt) < new Date()) && !(c.maxUses > 0 && c.usedCount >= c.maxUses)).length;
+  const expiredCount = coupons.filter((c) => c.expiresAt && new Date(c.expiresAt) < new Date()).length;
+
+  /* ── Filtered list ── */
+  const filtered = coupons.filter((c) => {
+    const expired  = c.expiresAt && new Date(c.expiresAt) < new Date();
+    const used     = c.maxUses > 0 && c.usedCount >= c.maxUses;
+    const matchQ   = !search || c.code.toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase());
+    const matchS   =
+      statusFilter === 'todos'     ? true
+      : statusFilter === 'activos'  ? (c.isActive && !expired && !used)
+      : statusFilter === 'vencidos' ? expired
+      : statusFilter === 'agotados' ? used
+      : statusFilter === 'inactivos'? !c.isActive
+      : true;
+    return matchQ && matchS;
+  });
+
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-none">Cupones</h1>
           <p className="text-ink-400 text-sm mt-1">
-            {coupons.length === 0 ? 'Creá tu primer cupón' : `${coupons.filter((c) => c.isActive).length} activos de ${coupons.length}`}
+            {coupons.length === 0 ? 'Creá tu primer cupón' : `${activeCount} activos · ${coupons.length} en total`}
           </p>
         </div>
         <button onClick={openCreate}
@@ -157,6 +194,61 @@ export default function AdminCoupons() {
           Nuevo cupón
         </button>
       </div>
+
+      {/* Mini stats bar */}
+      {!loading && coupons.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Activos</span>
+            <span className="text-xl font-bold text-green-700">{activeCount}</span>
+          </div>
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-xs font-semibold text-red-600 uppercase tracking-wider">Vencidos</span>
+            <span className="text-xl font-bold text-red-600">{expiredCount}</span>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Usos totales</span>
+            <span className="text-xl font-bold text-blue-700">{totalUses}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Search + status filter */}
+      {!loading && coupons.length > 0 && (
+        <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-4 space-y-3">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por código o descripción..."
+              className="w-full pl-9 pr-4 border border-cream-200 rounded-xl py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-300 hover:text-ink-600">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            )}
+          </div>
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <span className="text-[11px] font-bold text-ink-400 uppercase tracking-wider mr-1">Estado:</span>
+            {STATUS_FILTERS.map((f) => (
+              <button key={f.key} onClick={() => setStatus(f.key)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
+                  statusFilter === f.key ? 'bg-rose-500 text-white' : 'bg-cream-100 text-ink-600 hover:bg-cream-200'
+                }`}>
+                {f.label}
+              </button>
+            ))}
+            {(search || statusFilter !== 'todos') && (
+              <button onClick={() => { setSearch(''); setStatus('todos'); }}
+                className="ml-auto text-xs text-ink-400 hover:text-rose-500 font-semibold transition-colors flex items-center gap-1">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {!USE_API && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 text-sm">
@@ -181,9 +273,16 @@ export default function AdminCoupons() {
             Crear primer cupón
           </button>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-10 text-center">
+          <div className="text-3xl mb-3">🔍</div>
+          <p className="text-ink-400 font-medium">No hay cupones con ese filtro.</p>
+          <button onClick={() => { setSearch(''); setStatus('todos'); }}
+            className="mt-3 text-xs text-rose-500 font-semibold hover:underline">Limpiar filtros</button>
+        </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-3">
-          {coupons.map((c) => {
+          {filtered.map((c) => {
             const info    = TYPE_LABELS[c.type] || TYPE_LABELS.percent;
             const expired = c.expiresAt && new Date(c.expiresAt) < new Date();
             const used    = c.maxUses > 0 && c.usedCount >= c.maxUses;
@@ -324,7 +423,15 @@ export default function AdminCoupons() {
 
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-ink-500 uppercase tracking-wide mb-1.5">Código *</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-ink-500 uppercase tracking-wide">Código *</label>
+                    <button type="button"
+                      onClick={() => setForm((f) => ({ ...f, code: generateCode() }))}
+                      className="flex items-center gap-1 text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                      Auto-generar
+                    </button>
+                  </div>
                   <input required value={form.code}
                     onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
                     placeholder="PRIMERACOMPRA"

@@ -109,9 +109,28 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
+    const before = await Product.findById(req.params.id).select('stock');
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
-    res.json(product);
+
+    // Detect restock: stock went from 0 → >0 → surface pending requests so admin can notify.
+    let restockAlert = null;
+    if (before && before.stock === 0 && product.stock > 0) {
+      const RestockRequest = require('../models/RestockRequest');
+      const { broadcast } = require('../lib/sse');
+      const pending = await RestockRequest.find({ product: product._id, notified: false })
+        .sort({ createdAt: 1 });
+      if (pending.length > 0) {
+        restockAlert = { count: pending.length, requests: pending };
+        broadcast('restock-available', {
+          productId: product._id,
+          productName: product.name,
+          waitingCount: pending.length,
+        });
+      }
+    }
+
+    res.json({ ...product.toObject(), restockAlert });
   } catch (err) { next(err); }
 };
 

@@ -126,6 +126,10 @@ function ProductRow({ p, toggle, remove }) {
             className="p-2 text-ink-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Editar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </Link>
+          <Link to={`/admin/productos/nuevo?from=${id}`}
+            className="p-2 text-ink-300 hover:text-purple-500 hover:bg-purple-50 rounded-lg transition-all" title="Duplicar producto">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </Link>
           <button onClick={() => remove(id, p.name)}
             className="p-2 text-ink-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -236,29 +240,68 @@ function generateCatalog(products) {
   w.document.close();
 }
 
+const STOCK_FILTERS = [
+  { key: 'todos',      label: 'Todos'      },
+  { key: 'activos',    label: 'Activos'    },
+  { key: 'inactivos',  label: 'Inactivos'  },
+  { key: 'stock-bajo', label: 'Stock bajo' },
+  { key: 'agotados',   label: 'Agotados'   },
+];
+
+const SORT_OPTIONS = [
+  { value: '',           label: 'Orden por defecto' },
+  { value: 'nombre-az',  label: 'Nombre A → Z'      },
+  { value: 'precio-asc', label: 'Precio: menor ↑'   },
+  { value: 'precio-desc',label: 'Precio: mayor ↓'   },
+  { value: 'stock-asc',  label: 'Stock: menor primero'},
+];
+
 export default function AdminProducts() {
-  const [search, setSearch] = useState('');
-  const [cat, setCat]       = useState('todos');
+  const [search, setSearch]           = useState('');
+  const [cat, setCat]                 = useState('todos');
+  const [stockFilter, setStockFilter] = useState('todos');
+  const [sort, setSort]               = useState('');
   const { products, loading, toggle, remove } = useAdminProducts();
 
-  const filtered = products.filter((p) => {
-    const matchCat = cat === 'todos' || (p.category || p.cat) === cat;
-    const matchQ   = !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.brand || '').toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchQ;
-  });
+  const activeCount    = products.filter(p => p.isActive !== false).length;
+  const outOfStock     = products.filter(p => p.stock === 0).length;
+  const lowStock       = products.filter(p => typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5).length;
+  const inactiveCount  = products.filter(p => p.isActive === false).length;
 
-  const activeCount = products.filter(p => p.isActive !== false).length;
+  const filtered = products
+    .filter((p) => {
+      const isActive = p.isActive !== false;
+      const matchCat = cat === 'todos' || (p.category || p.cat) === cat;
+      const matchQ   = !search ||
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        (p.brand || '').toLowerCase().includes(search.toLowerCase());
+      const matchStock =
+        stockFilter === 'todos'      ? true
+        : stockFilter === 'activos'   ? isActive
+        : stockFilter === 'inactivos' ? !isActive
+        : stockFilter === 'stock-bajo'? (typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5)
+        : stockFilter === 'agotados'  ? p.stock === 0
+        : true;
+      return matchCat && matchQ && matchStock;
+    })
+    .sort((a, b) => {
+      if (sort === 'nombre-az')  return a.name.localeCompare(b.name, 'es');
+      if (sort === 'precio-asc') return a.price - b.price;
+      if (sort === 'precio-desc')return b.price - a.price;
+      if (sort === 'stock-asc')  return (a.stock ?? Infinity) - (b.stock ?? Infinity);
+      return 0;
+    });
+
+  const hasFilters = search || cat !== 'todos' || stockFilter !== 'todos' || sort;
 
   return (
     <div className="space-y-5">
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-none">Productos</h1>
-          <p className="text-ink-400 text-sm mt-1">{activeCount} activos de {products.length} en total</p>
+          <p className="text-ink-400 text-sm mt-1">{activeCount} activos · {products.length} en total</p>
         </div>
         <div className="flex items-center gap-2">
           {products.length > 0 && (
@@ -276,24 +319,94 @@ export default function AdminProducts() {
         </div>
       </div>
 
+      {/* Mini stats bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Total',      value: products.length, color: 'text-ink-900',   bg: 'bg-cream-50',   border: 'border-cream-200' },
+          { label: 'Activos',    value: activeCount,     color: 'text-green-700', bg: 'bg-green-50',   border: 'border-green-100' },
+          { label: 'Stock bajo', value: lowStock,        color: 'text-amber-700', bg: 'bg-amber-50',   border: 'border-amber-100' },
+          { label: 'Agotados',   value: outOfStock,      color: 'text-red-600',   bg: 'bg-red-50',     border: 'border-red-100'   },
+        ].map((s) => (
+          <div key={s.label} className={`${s.bg} ${s.border} border rounded-xl px-4 py-3 flex items-center justify-between`}>
+            <span className="text-xs font-semibold text-ink-500 uppercase tracking-wider">{s.label}</span>
+            <span className={`text-xl font-bold ${s.color}`}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre o marca..."
-            className="w-full pl-9 pr-4 border border-cream-200 rounded-xl py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white" />
+      <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-4 space-y-3">
+        {/* Row 1: search + sort */}
+        <div className="flex gap-3 flex-col sm:flex-row">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nombre o marca..."
+              className="w-full pl-9 pr-4 border border-cream-200 rounded-xl py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white" />
+          </div>
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300 pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="10" y2="14"/><line x1="21" y1="18" x2="10" y2="18"/></svg>
+            <select value={sort} onChange={(e) => setSort(e.target.value)}
+              className="pl-8 pr-4 border border-cream-200 rounded-xl py-2.5 text-sm text-ink-700 focus:outline-none focus:border-rose-400 cursor-pointer bg-white appearance-none min-w-[190px]">
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
         </div>
-        <select value={cat} onChange={(e) => setCat(e.target.value)}
-          className="border border-cream-200 rounded-xl px-3 py-2.5 text-sm text-ink-700 focus:outline-none focus:border-rose-400 cursor-pointer bg-white">
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c === 'todos' ? 'Todas las categorías' : c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-        </select>
-        {(search || cat !== 'todos') && (
-          <button onClick={() => { setSearch(''); setCat('todos'); }}
-            className="text-xs text-ink-400 hover:text-rose-500 font-medium transition-colors whitespace-nowrap px-1">
-            Limpiar filtros
-          </button>
-        )}
+
+        {/* Row 2: category pills */}
+        <div className="flex gap-1.5 flex-wrap">
+          <span className="text-[11px] font-bold text-ink-400 uppercase tracking-wider self-center mr-1">Categoría:</span>
+          {CATEGORIES.map((c) => (
+            <button key={c} onClick={() => setCat(c)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
+                cat === c
+                  ? 'bg-ink-900 text-white'
+                  : 'bg-cream-100 text-ink-600 hover:bg-cream-200'
+              }`}>
+              {c === 'todos' ? 'Todas' : c.charAt(0).toUpperCase() + c.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 3: stock filter pills */}
+        <div className="flex gap-1.5 flex-wrap items-center">
+          <span className="text-[11px] font-bold text-ink-400 uppercase tracking-wider mr-1">Estado:</span>
+          {STOCK_FILTERS.map((f) => {
+            const counts = {
+              todos: products.length,
+              activos: activeCount,
+              inactivos: inactiveCount,
+              'stock-bajo': lowStock,
+              agotados: outOfStock,
+            };
+            const dotColor = {
+              todos: '', activos: 'bg-green-500', inactivos: 'bg-ink-400',
+              'stock-bajo': 'bg-amber-500', agotados: 'bg-red-500',
+            }[f.key];
+            return (
+              <button key={f.key} onClick={() => setStockFilter(f.key)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
+                  stockFilter === f.key
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-cream-100 text-ink-600 hover:bg-cream-200'
+                }`}>
+                {dotColor && <span className={`w-1.5 h-1.5 rounded-full ${stockFilter === f.key ? 'bg-white' : dotColor}`} />}
+                {f.label}
+                <span className={`ml-0.5 text-[10px] font-bold ${stockFilter === f.key ? 'text-white/80' : 'text-ink-400'}`}>
+                  {counts[f.key]}
+                </span>
+              </button>
+            );
+          })}
+
+          {hasFilters && (
+            <button onClick={() => { setSearch(''); setCat('todos'); setStockFilter('todos'); setSort(''); }}
+              className="ml-auto text-xs text-ink-400 hover:text-rose-500 font-semibold transition-colors flex items-center gap-1">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              Limpiar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Desktop table */}

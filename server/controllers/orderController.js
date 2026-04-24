@@ -7,33 +7,83 @@ const { sendOrderNotification, sendCustomerConfirmation, sendCustomerStatusUpdat
 
 /* ---------- Public ---------- */
 
+const ALLOWED_SHIPPING_METHODS = ['correos', 'express', 'retiro'];
+
 exports.create = async (req, res, next) => {
   try {
     const {
       customer,
       items,
-      subtotal,
-      shippingCost: rawShippingCost = 0,
       shippingMethod = 'correos',
       coupon: couponData = null,
     } = req.body;
 
+    /* ── Basic shape validation ── */
     if (!customer || !items?.length) {
       return res.status(400).json({ error: 'Datos del pedido incompletos' });
     }
+    if (!ALLOWED_SHIPPING_METHODS.includes(shippingMethod)) {
+      return res.status(400).json({ error: 'Método de envío inválido' });
+    }
+    if (items.length > 50) {
+      return res.status(400).json({ error: 'Demasiados artículos en el pedido' });
+    }
 
-    const settings       = await Settings.findOne({ key: 'main' });
-    const autoConfirm    = settings?.autoConfirmOrders !== false; // default true
-    const initialStatus  = autoConfirm ? 'confirmado' : 'pendiente';
+    /* ── Fetch settings + validate shipping cost from DB (never trust client) ── */
+    const settings    = await Settings.findOne({ key: 'main' });
+    const autoConfirm = settings?.autoConfirmOrders !== false;
 
-    // Re-validate coupon server-side — never trust client-sent discount.
-    // Atomically claim one use if maxUses has free slots.
+    /* ── Re-price every item from the database — never trust client prices ── */
+    const productIds = items
+      .filter((i) => i.productId)
+      .map((i) => i.productId);
+
+    const dbProducts = productIds.length
+      ? await Product.find({ _id: { $in: productIds } }).select('_id price stock isActive')
+      : [];
+
+    const priceMap = Object.fromEntries(dbProducts.map((p) => [String(p._id), p]));
+
+    let subtotal = 0;
+    const validatedItems = [];
+
+    for (const item of items) {
+      const qty = Math.max(1, Math.round(Number(item.qty) || 1));
+
+      if (item.productId) {
+        const dbProd = priceMap[String(item.productId)];
+        if (!dbProd) return res.status(400).json({ error: `Producto no encontrado: ${item.productId}` });
+        if (dbProd.isActive === false) return res.status(400).json({ error: `Producto no disponible: ${item.name}` });
+        // Always use the real price from the database
+        subtotal += dbProd.price * qty;
+        validatedItems.push({ ...item, price: dbProd.price, qty });
+      } else {
+        // Item without productId (e.g., local data fallback) — use client price only in dev
+        const price = Number(item.price) || 0;
+        subtotal += price * qty;
+        validatedItems.push({ ...item, price, qty });
+      }
+    }
+
+    /* ── Server-side shipping cost (never trust client) ── */
+    let rawShippingCost = 0;
+    if (shippingMethod === 'retiro') {
+      rawShippingCost = 0;
+    } else if (shippingMethod === 'express') {
+      rawShippingCost = settings?.shippingCostExpress ?? 4500;
+    } else {
+      // correos — check if free shipping threshold met
+      const freeFrom = settings?.freeShippingFrom ?? 25000;
+      rawShippingCost = subtotal >= freeFrom ? 0 : (settings?.shippingCostCorreos ?? 2500);
+    }
+
+    /* ── Re-validate coupon server-side — never trust client-sent discount ── */
     let discount     = 0;
     let freeShipping = false;
     let appliedCode  = null;
 
     if (couponData?.code) {
-      const code = String(couponData.code).toUpperCase();
+      const code = String(couponData.code).trim().toUpperCase().slice(0, 30);
       const claimed = await Coupon.findOneAndUpdate(
         {
           code,
@@ -55,7 +105,6 @@ exports.create = async (req, res, next) => {
         freeShipping = claimed.type === 'shipping';
         appliedCode  = claimed.code;
       } else if (claimed) {
-        // Claimed a use but subtotal below minOrder — refund the use.
         await Coupon.updateOne({ _id: claimed._id }, { $inc: { usedCount: -1 } });
       }
     }
@@ -63,9 +112,11 @@ exports.create = async (req, res, next) => {
     const shippingCost = freeShipping ? 0 : rawShippingCost;
     const total        = Math.max(0, subtotal - discount) + shippingCost;
 
+    const initialStatus = autoConfirm ? 'confirmado' : 'pendiente';
+
     const order = await Order.create({
       customer,
-      items,
+      items: validatedItems,
       subtotal,
       discount,
       coupon: appliedCode

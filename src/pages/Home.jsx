@@ -666,19 +666,38 @@ function StatsStrip() {
             animationTimingFunction:'ease-out',animationIterationCount:'infinite'}} />
       ))}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10">
           {STATS.map((s, i) => (
             <motion.div key={s.label}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.55, ease: [0.3, 1, 0.3, 1] }}
-              className="text-center">
-              <p className="text-3xl mb-2">{s.emoji}</p>
-              <p className="text-3xl sm:text-4xl font-bold text-white leading-none tabular-nums">
+              whileHover={{ y: -4 }}
+              className="flex flex-col items-center text-center group cursor-default">
+
+              {/* Emoji in glass bubble */}
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center text-2xl mb-4 transition-transform duration-300 group-hover:scale-110"
+                style={{
+                  background: 'rgba(255,255,255,0.14)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.28)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.3)',
+                }}
+              >
+                {s.emoji}
+              </div>
+
+              <p className="text-4xl sm:text-5xl font-bold text-white leading-none tabular-nums tracking-tight">
                 <CountNumView to={s.to} duration={2} />{s.suffix}
               </p>
-              <p className="text-white/65 text-sm mt-2 font-medium">{s.label}</p>
+              <p className="text-white/60 text-sm mt-2.5 font-medium leading-tight max-w-[120px]">{s.label}</p>
+
+              {/* Subtle bottom accent line */}
+              <div className="w-8 h-0.5 mt-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ background: 'rgba(255,255,255,0.5)' }} />
             </motion.div>
           ))}
         </div>
@@ -923,7 +942,14 @@ function GuaranteeSection() {
               {/* Top accent line */}
               <div className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-t-2xl"
                 style={{ background: 'linear-gradient(90deg, #C9A875, #B85F72)' }} />
-              <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl mx-auto mb-5">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5 transition-transform duration-300 group-hover:scale-110"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(184,95,114,0.14) 0%, rgba(201,168,117,0.09) 100%)',
+                  border: '1px solid rgba(184,95,114,0.22)',
+                  boxShadow: '0 4px 16px rgba(184,95,114,0.13)',
+                }}
+              >
                 {g.emoji}
               </div>
               <h3 className="font-display text-lg font-semibold text-ink-900 mb-2 group-hover:text-rose-500 transition-colors duration-300">
@@ -1025,15 +1051,17 @@ function Catalog({ externalCat, catalogRef }) {
   const cat      = searchParams.get('cat')      || 'todos';
   const brand    = searchParams.get('brand')    || '';
   const q        = searchParams.get('q')        || '';
+  const sort     = searchParams.get('sort')     || 'relevancia';
   const minPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : '';
   const maxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : '';
 
   const applyFilter = (updates) => {
     setSearchParams((prev) => {
       const np = new URLSearchParams(prev);
-      Object.entries(updates).forEach(([k, v]) =>
-        v && v !== 'todos' ? np.set(k, String(v)) : np.delete(k)
-      );
+      Object.entries(updates).forEach(([k, v]) => {
+        const isEmpty = !v || v === 'todos' || v === 'relevancia';
+        isEmpty ? np.delete(k) : np.set(k, String(v));
+      });
       return np;
     });
     setAnimKey((k) => k + 1);
@@ -1048,11 +1076,22 @@ function Catalog({ externalCat, catalogRef }) {
   const handleCat   = (c) => applyFilter({ cat: c });
   const handleBrand = (b) => applyFilter({ brand: b });
   const handlePrice = ({ minPrice: mn, maxPrice: mx }) => applyFilter({ minPrice: mn, maxPrice: mx });
+  const handleSort  = (s) => applyFilter({ sort: s });
 
   const { products: rawProducts, loading } = useProducts({ cat, brand, q });
-  const products = rawProducts.filter((p) =>
+  const filtered = rawProducts.filter((p) =>
     (!minPrice || p.price >= minPrice) && (!maxPrice || p.price <= maxPrice)
   );
+
+  const products = [...filtered].sort((a, b) => {
+    switch (sort) {
+      case 'precio-asc':  return a.price - b.price;
+      case 'precio-desc': return b.price - a.price;
+      case 'rating':      return (b.rating || 0) - (a.rating || 0);
+      case 'nombre':      return a.name.localeCompare(b.name, 'es');
+      default:            return 0;
+    }
+  });
 
   const catLabel = {
     todos: 'Todos los productos', ojos: 'Ojos', labios: 'Labios',
@@ -1104,7 +1143,7 @@ function Catalog({ externalCat, catalogRef }) {
 
         <StoriesRow cat={cat} onCat={handleCat} />
 
-        <FilterBar cat={cat} brand={brand} minPrice={minPrice} maxPrice={maxPrice} onCat={handleCat} onBrand={handleBrand} onPrice={handlePrice} />
+        <FilterBar brand={brand} minPrice={minPrice} maxPrice={maxPrice} sort={sort} onBrand={handleBrand} onPrice={handlePrice} onSort={handleSort} />
 
         <AnimatePresence mode="wait">
           {loading ? (

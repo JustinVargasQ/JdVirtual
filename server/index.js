@@ -1,80 +1,151 @@
 require('dotenv').config();
-const express  = require('express');
-const mongoose = require('mongoose');
-const cors     = require('cors');
-const path     = require('path');
+const express       = require('express');
+const mongoose      = require('mongoose');
+const cors          = require('cors');
+const path          = require('path');
+const helmet        = require('helmet');
+const rateLimit     = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp           = require('hpp');
 
-const authRoutes     = require('./routes/auth');
-const productRoutes  = require('./routes/products');
-const orderRoutes    = require('./routes/orders');
-const settingsRoutes = require('./routes/settings');
-const reviewsRoutes  = require('./routes/reviews');
-const couponsRoutes  = require('./routes/coupons');
+const authRoutes          = require('./routes/auth');
+const productRoutes       = require('./routes/products');
+const orderRoutes         = require('./routes/orders');
+const settingsRoutes      = require('./routes/settings');
+const reviewsRoutes       = require('./routes/reviews');
+const couponsRoutes       = require('./routes/coupons');
 const restockRoutes       = require('./routes/restock');
 const productReviewRoutes = require('./routes/productReviews');
 const errorHandler        = require('./middleware/errorHandler');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
+const isProd = process.env.NODE_ENV === 'production';
 
-/* ── Middleware ── */
+/* ─── CORS ─── */
+// CLIENT_URL  = URL exacta del frontend en producción (sin slash final)
+// CLIENT_URL2 = URL alternativa (preview deploys, dominio custom, etc.)
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:4173',
+  'https://jd-virtual.vercel.app',   // dominio de producción hardcoded como fallback
   process.env.CLIENT_URL,
+  process.env.CLIENT_URL2,
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow requests with no origin (mobile apps, curl, Postman)
-    if (!origin) return cb(null, true);
-    // Allow any vercel.app subdomain + explicit allowed origins
-    if (ALLOWED_ORIGINS.includes(origin) || /\.vercel\.app$/.test(origin)) {
-      return cb(null, true);
+    // Sin origin → bloquear en producción (Postman / curl / bots)
+    if (!origin) {
+      if (isProd) return cb(new Error('CORS: origen requerido'));
+      return cb(null, true);   // permitir en desarrollo
     }
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    if (isProd) console.warn(`🚫 CORS bloqueado: ${origin}`);
     cb(new Error(`CORS bloqueado: ${origin}`));
   },
   credentials: true,
+  optionsSuccessStatus: 200,
 }));
-app.use(express.json({ limit: '10mb' }));
+
+/* ─── Helmet — security headers ─── */
+app.use(helmet({
+  contentSecurityPolicy: false,       // managed by frontend
+  crossOriginEmbedderPolicy: false,   // needed for Google Maps iframes
+}));
+app.disable('x-powered-by');
+
+/* ─── Body parsing (tight limit outside uploads) ─── */
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+/* ─── NoSQL injection prevention ─── */
+app.use(mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    if (isProd) return;
+    console.warn(`⚠️  Mongo sanitize: clave sospechosa "${key}" en ${req.path}`);
+  },
+}));
+
+/* ─── HTTP Parameter Pollution prevention ─── */
+app.use(hpp());
+
+/* ─── Rate limiters ─── */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,   // 15 min
+  max: 10,                      // 10 intentos por ventana
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Intentá de nuevo en 15 minutos.' },
+  skipSuccessfulRequests: true, // solo cuenta los fallidos
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,          // 1 min
+  max: 120,                     // 120 req/min por IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Esperá un momento.' },
+});
+
+const orderLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,                      // máx 10 órdenes por minuto por IP
+  message: { error: 'Demasiados pedidos. Esperá un momento.' },
+});
+
+/* ─── Serve uploads (static files) ─── */
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-/* ── Routes ── */
-app.use('/api/auth',     authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders',   orderRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/reviews',  reviewsRoutes);
-app.use('/api/coupons',  couponsRoutes);
-app.use('/api/restock',         restockRoutes);
-app.use('/api/product-reviews', productReviewRoutes);
+/* ─── Routes ─── */
+app.use('/api/auth',            authLimiter, authRoutes);
+app.use('/api/products',        apiLimiter,  productRoutes);
+app.use('/api/orders',          apiLimiter,  orderRoutes);
+app.use('/api/settings',        apiLimiter,  settingsRoutes);
+app.use('/api/reviews',         apiLimiter,  reviewsRoutes);
+app.use('/api/coupons',         apiLimiter,  couponsRoutes);
+app.use('/api/restock',         apiLimiter,  restockRoutes);
+app.use('/api/product-reviews', apiLimiter,  productReviewRoutes);
 
 app.get('/api/health', (req, res) =>
   res.json({ status: 'ok', time: new Date().toISOString() })
 );
 
-/* ── SSE — real-time admin events ── */
+/* ─── SSE — real-time admin events ─── */
 const jwt = require('jsonwebtoken');
 const { addClient } = require('./lib/sse');
+
 app.get('/api/events', (req, res) => {
+  // Token via query param is unavoidable for SSE; mitigate by verifying and short-circuiting fast
   const token = req.query.token;
-  if (!token) return res.status(401).end();
-  try { jwt.verify(token, process.env.JWT_SECRET); } catch { return res.status(401).end(); }
+  if (!token || typeof token !== 'string' || token.length > 512) {
+    return res.status(401).end();
+  }
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).end();
+  }
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
   res.write('event: connected\ndata: {}\n\n');
   addClient(res);
 });
 
-/* ── 404 ── */
-app.use((req, res) => res.status(404).json({ error: `Ruta no encontrada: ${req.path}` }));
+/* ─── 404 ─── */
+app.use((req, res) =>
+  res.status(404).json({ error: 'Ruta no encontrada' })
+  // Never expose req.path in production to avoid path disclosure
+);
 
-/* ── Error handler ── */
+/* ─── Error handler ─── */
 app.use(errorHandler);
 
-/* ── DB + Server ── */
+/* ─── DB + Server ─── */
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
