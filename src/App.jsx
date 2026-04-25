@@ -24,6 +24,7 @@ import AdminReviews from './pages/admin/Reviews';
 import useAuthStore from './store/authStore';
 import InstallBanner from './components/ui/InstallBanner';
 import PromoBanner from './components/ui/PromoBanner';
+import ServerWakeup from './components/ui/ServerWakeup';
 
 function StorefrontLayout({ children }) {
   const location = useLocation();
@@ -61,6 +62,7 @@ function RequireAuth({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ServerWakeup />
       <Toaster />
       <InstallBanner />
       <PageTracker />
