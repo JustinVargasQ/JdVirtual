@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProduct, useProducts } from '../hooks/useProducts';
 import useCart from '../hooks/useCart';
 import useWishlist from '../hooks/useWishlist';
-import useWhatsApp from '../hooks/useWhatsApp';
 import { formatCRC } from '../lib/currency';
 import ProductCard from '../components/ui/ProductCard';
 
@@ -206,7 +205,7 @@ export default function ProductDetail() {
   const { product, loading } = useProduct(slug);
   const { addItem, openCart } = useCart();
   const { has: isFav, toggle: toggleFav } = useWishlist();
-  const { openOrder } = useWhatsApp();
+  const navigate = useNavigate();
   const [qty, setQty]               = useState(1);
   const [added, setAdded]           = useState(false);
   const [activeImg, setActiveImg]   = useState(0);
@@ -286,9 +285,10 @@ export default function ProductDetail() {
     setTimeout(() => setAdded(false), 2000);
   };
 
-  const handleBuyWa = () => {
+  /* Pedir ahora: agrega al carrito y va al formulario (registra el pedido) */
+  const handleBuyNow = () => {
     addItem(product, qty);
-    openOrder();
+    navigate('/checkout');
   };
 
   const handleRestock = async () => {
@@ -527,9 +527,9 @@ export default function ProductDetail() {
               </motion.button>
             </div>
             <div className="flex gap-3 mb-3">
-              <button onClick={handleBuyWa}
+              <button onClick={handleBuyNow}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1db954] active:scale-[0.98] text-white font-semibold text-sm py-3.5 rounded-xl transition-all duration-200">
-                <WaIcon /> Comprar por WhatsApp
+                <WaIcon /> Pedir por WhatsApp
               </button>
             </div>
 
@@ -608,9 +608,9 @@ export default function ProductDetail() {
                 }`}>
                 {added ? '✓ Agregado' : product.stock === 0 ? 'Agotado' : 'Añadir al carrito'}
               </button>
-              <button onClick={handleBuyWa}
+              <button onClick={handleBuyNow}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1db954] text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-lg">
-                <WaIcon /> WhatsApp
+                <WaIcon /> Pedir ya
               </button>
             </div>
           </motion.div>
