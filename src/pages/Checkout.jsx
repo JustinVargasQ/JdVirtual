@@ -24,14 +24,27 @@ const PAYMENT_METHODS = {
 };
 
 export default function Checkout() {
-  const { items, total, clearCart } = useCart();
+  const {
+    items, total, clearCart,
+    couponCode: cartCouponCode,
+    couponDiscount: cartCouponDiscount,
+    couponDesc: cartCouponDesc,
+    couponType: cartCouponType,
+    clearCoupon: clearCartCoupon,
+  } = useCart();
+
   const navigate = useNavigate();
   const [shipping, setShipping] = useState('correos');
   const [payment, setPayment]   = useState('whatsapp');
   const [form, setForm] = useState({ name: '', phone: '', email: '', province: 'Puntarenas', address: '', notes: '', lat: null, lng: null });
 
   const [couponCode,   setCouponCode]   = useState('');
-  const [coupon,       setCoupon]       = useState(null); // { code, type, discount, freeShipping, description }
+  /* Inicializar desde el cart store si el usuario ya aplicó un cupón en el drawer */
+  const [coupon, setCoupon] = useState(() =>
+    cartCouponCode
+      ? { code: cartCouponCode, discount: cartCouponDiscount, description: cartCouponDesc, type: cartCouponType, freeShipping: cartCouponType === 'shipping' }
+      : null
+  );
   const [couponError,  setCouponError]  = useState('');
   const [couponLoading,setCouponLoading]= useState(false);
 
@@ -69,7 +82,7 @@ export default function Checkout() {
     }
   };
 
-  const removeCoupon = () => { setCoupon(null); setCouponError(''); };
+  const removeCoupon = () => { setCoupon(null); setCouponError(''); clearCartCoupon(); };
 
   const [submitting, setSubmitting] = useState(false);
 
