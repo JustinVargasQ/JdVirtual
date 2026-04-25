@@ -30,11 +30,16 @@ const useCartStore = create(
         set((s) => ({ items: s.items.map((i) => i.id === id ? { ...i, qty } : i) }));
       },
 
-      couponCode: '',
-      setCoupon:  (code) => set({ couponCode: code }),
-      clearCoupon: () => set({ couponCode: '' }),
+      couponCode:     '',
+      couponDiscount: 0,
+      couponDesc:     '',
+      couponType:     '',
+      setCoupon: (code, discount = 0, desc = '', type = '') =>
+        set({ couponCode: code, couponDiscount: discount, couponDesc: desc, couponType: type }),
+      clearCoupon: () =>
+        set({ couponCode: '', couponDiscount: 0, couponDesc: '', couponType: '' }),
 
-      clearCart: () => set({ items: [], couponCode: '' }),
+      clearCart: () => set({ items: [], couponCode: '', couponDiscount: 0, couponDesc: '', couponType: '' }),
 
       get total() {
         return get().items.reduce((s, i) => s + i.price * i.qty, 0);

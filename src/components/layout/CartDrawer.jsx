@@ -10,22 +10,40 @@ const TrashIcon  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="n
 const WaIcon     = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
 const TagIcon    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>;
 
-/* ── Coupon input strip ── */
-function CouponStrip({ couponCode, setCoupon, clearCoupon }) {
-  const [input,  setInput]  = useState(couponCode || '');
-  const [open,   setOpen]   = useState(!!couponCode);
-  const [saved,  setSaved]  = useState(!!couponCode);
+/* ── Coupon input strip — validates against the real API ── */
+function CouponStrip({ couponCode, couponDiscount, couponDesc, setCoupon, clearCoupon, subtotal }) {
+  const [input,    setInput]   = useState('');
+  const [open,     setOpen]    = useState(!!couponCode);
+  const [loading,  setLoading] = useState(false);
+  const [error,    setError]   = useState('');
 
-  const apply = () => {
+  const hasApi = !!import.meta.env.VITE_API_URL;
+
+  const apply = async () => {
     const code = input.trim().toUpperCase();
     if (!code) return;
-    setCoupon(code);
-    setSaved(true);
+    if (!hasApi) {
+      setError('Los cupones requieren conexión al servidor.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const { default: api } = await import('../../lib/api');
+      const { data } = await api.post('/coupons/validate', { code, subtotal });
+      setCoupon(data.code, data.discount, data.description, data.type);
+      setInput('');
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Cupón inválido o expirado';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const remove = () => {
     setInput('');
-    setSaved(false);
+    setError('');
     clearCoupon();
   };
 
@@ -42,41 +60,80 @@ function CouponStrip({ couponCode, setCoupon, clearCoupon }) {
         </button>
       ) : (
         <AnimatePresence mode="wait">
-          {saved && couponCode ? (
+          {couponCode ? (
+            /* ── Applied state ── */
             <motion.div key="saved"
               initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-              className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600"><polyline points="20 6 9 17 4 12"/></svg>
-                <span className="text-xs font-bold text-emerald-700">Cupón aplicado:</span>
-                <span className="font-mono text-xs font-bold text-emerald-800 tracking-wider">{couponCode}</span>
+              className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600 flex-shrink-0">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-emerald-700">Cupón aplicado:</span>
+                      <span className="font-mono text-xs font-bold text-emerald-800 tracking-wider">{couponCode}</span>
+                    </div>
+                    {couponDesc && (
+                      <p className="text-[10px] text-emerald-600 mt-0.5">{couponDesc}</p>
+                    )}
+                  </div>
+                </div>
+                <button onClick={remove}
+                  className="text-emerald-400 hover:text-red-500 transition-colors ml-2 p-1"
+                  title="Quitar cupón">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                  </svg>
+                </button>
               </div>
-              <button onClick={remove} className="text-emerald-400 hover:text-emerald-700 transition-colors ml-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-              </button>
+              {couponDiscount > 0 && (
+                <div className="mt-2 pt-2 border-t border-emerald-200 flex justify-between text-xs font-semibold">
+                  <span className="text-emerald-700">Descuento:</span>
+                  <span className="text-emerald-700">−{formatCRC(couponDiscount)}</span>
+                </div>
+              )}
             </motion.div>
           ) : (
+            /* ── Input state ── */
             <motion.div key="input"
               initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-              <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wider mb-1.5">Cupón de descuento</p>
+              <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wider mb-1.5">Código de descuento</p>
               <div className="flex gap-2">
                 <input
                   value={input}
-                  onChange={(e) => setInput(e.target.value.toUpperCase())}
+                  onChange={(e) => { setInput(e.target.value.toUpperCase()); setError(''); }}
                   onKeyDown={(e) => e.key === 'Enter' && apply()}
-                  placeholder="CÓDIGO"
+                  placeholder="TU-CÓDIGO"
                   maxLength={20}
-                  className="flex-1 font-mono text-sm font-bold tracking-wider bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 uppercase placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all"
+                  disabled={loading}
+                  className={`flex-1 font-mono text-sm font-bold tracking-wider bg-cream-50 border rounded-xl px-3 py-2 uppercase placeholder-ink-300 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 ${
+                    error ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-cream-200 focus:border-rose-400 focus:ring-rose-100'
+                  }`}
                 />
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={apply}
-                  disabled={!input.trim()}
-                  className="px-4 py-2 bg-ink-900 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-40">
-                  Aplicar
+                  disabled={!input.trim() || loading}
+                  className="px-4 py-2 bg-ink-900 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap">
+                  {loading ? (
+                    <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                  ) : 'Validar'}
                 </motion.button>
               </div>
-              <p className="text-[10px] text-ink-400 mt-1.5">El descuento se aplica al finalizar el pedido.</p>
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                  className="text-[11px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  {error}
+                </motion.p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -147,8 +204,11 @@ function OrderProgress({ hasItems }) {
 }
 
 export default function CartDrawer() {
-  const { items, isOpen, closeCart, removeItem, updateQty, total, couponCode, setCoupon, clearCoupon } = useCart();
+  const { items, isOpen, closeCart, removeItem, updateQty, total,
+          couponCode, couponDiscount, couponDesc, couponType,
+          setCoupon, clearCoupon } = useCart();
   const { openOrder } = useWhatsApp();
+  const finalTotal = Math.max(0, total - (couponDiscount || 0));
 
   return (
     <AnimatePresence>
@@ -249,18 +309,36 @@ export default function CartDrawer() {
             {items.length > 0 && (
               <div className="border-t border-cream-200 px-6 pt-5 pb-6 space-y-4 bg-white">
                 {/* Coupon strip */}
-                <CouponStrip couponCode={couponCode} setCoupon={setCoupon} clearCoupon={clearCoupon} />
+                <CouponStrip
+                  couponCode={couponCode}
+                  couponDiscount={couponDiscount}
+                  couponDesc={couponDesc}
+                  setCoupon={setCoupon}
+                  clearCoupon={clearCoupon}
+                  subtotal={total}
+                />
 
-                {/* Subtotal */}
-                <div className="flex items-center justify-between pt-1">
-                  <span className="font-semibold text-ink-700">Subtotal</span>
-                  <span className="font-bold text-xl text-ink-900">{formatCRC(total)}</span>
+                {/* Totals */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-500">Subtotal</span>
+                    <span className="font-semibold text-ink-700">{formatCRC(total)}</span>
+                  </div>
+                  {couponDiscount > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center justify-between text-sm">
+                      <span className="text-emerald-600 font-medium flex items-center gap-1">
+                        <TagIcon /> Cupón <span className="font-mono font-bold">{couponCode}</span>
+                      </span>
+                      <span className="text-emerald-600 font-bold">−{formatCRC(couponDiscount)}</span>
+                    </motion.div>
+                  )}
+                  <div className="flex items-center justify-between border-t border-cream-200 pt-2 mt-1">
+                    <span className="font-bold text-ink-900">Total estimado</span>
+                    <span className="font-bold text-xl text-ink-900">{formatCRC(finalTotal)}</span>
+                  </div>
                 </div>
-                {couponCode && (
-                  <p className="text-[11px] text-emerald-600 font-medium -mt-2">
-                    ✓ Cupón <span className="font-mono font-bold">{couponCode}</span> guardado — se aplica al finalizar.
-                  </p>
-                )}
                 <p className="text-xs text-ink-400">Envío coordinado por WhatsApp según tu provincia.</p>
 
                 <motion.button
