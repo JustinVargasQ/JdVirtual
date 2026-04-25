@@ -1,4 +1,13 @@
 require('dotenv').config();
+
+/* ─── Validate required env vars before anything else ─── */
+const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET'];
+const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missingEnv.length) {
+  console.error(`❌ Variables de entorno faltantes: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
+
 const express       = require('express');
 const mongoose      = require('mongoose');
 const cors          = require('cors');
@@ -49,8 +58,16 @@ app.use(cors({
 
 /* ─── Helmet — security headers ─── */
 app.use(helmet({
-  contentSecurityPolicy: false,       // managed by frontend
-  crossOriginEmbedderPolicy: false,   // needed for Google Maps iframes
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'none'"],
+      imgSrc:      ["'self'"],   // solo imágenes propias (uploads)
+      connectSrc:  ["'self'"],
+      objectSrc:   ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
 }));
 app.disable('x-powered-by');
 

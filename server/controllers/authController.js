@@ -1,9 +1,14 @@
-const jwt   = require('jsonwebtoken');
-const Admin = require('../models/Admin');
+const jwt         = require('jsonwebtoken');
+const Admin       = require('../models/Admin');
+const SecurityLog = require('../models/SecurityLog');
 
 const FAILED_ATTEMPTS = new Map(); // ip → { count, lockedUntil }
 const MAX_ATTEMPTS    = 5;
 const LOCK_MINUTES    = 15;
+
+function logEvent(type, ip, email) {
+  SecurityLog.create({ type, ip, email }).catch(() => {});
+}
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -59,18 +64,21 @@ exports.login = async (req, res, next) => {
         record.count = 0;
         FAILED_ATTEMPTS.set(ip, record);
         console.warn(`🔒 Login bloqueado para IP ${ip} por ${LOCK_MINUTES} min`);
+        logEvent('login_blocked', ip, sanitizedEmail);
         return res.status(429).json({
           error: `Demasiados intentos fallidos. Bloqueado por ${LOCK_MINUTES} minutos.`,
         });
       }
       FAILED_ATTEMPTS.set(ip, record);
       console.warn(`⚠️  Login fallido para "${sanitizedEmail}" desde ${ip} (intento ${record.count})`);
+      logEvent('login_fail', ip, sanitizedEmail);
       return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
 
     /* ── Success: reset attempts ── */
     FAILED_ATTEMPTS.delete(ip);
     console.info(`✅ Login exitoso: ${sanitizedEmail} desde ${ip}`);
+    logEvent('login_ok', ip, sanitizedEmail);
 
     res.json({
       token: signToken(admin._id),
