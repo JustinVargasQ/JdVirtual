@@ -18,32 +18,35 @@ export default function ServerWakeup() {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    /* Solo aplica si hay API configurada */
     if (!API) return;
 
-    let timer;
-    let elapsedTimer;
-    let mounted = true;
+    let mounted  = true;
+    let shown    = false;   // ¿el overlay llegó a mostrarse?
 
-    /* Mostrar el overlay solo si tarda más de 1.5s */
     const showTimer = setTimeout(() => {
-      if (mounted) setShow(true);
+      if (!mounted) return;
+      shown = true;
+      setShow(true);
     }, 1500);
 
-    /* Contador de segundos para el texto */
-    elapsedTimer = setInterval(() => {
+    const elapsedTimer = setInterval(() => {
       if (mounted) setElapsed((e) => e + 1);
     }, 1000);
 
-    /* Ping al servidor */
     const ping = async () => {
       try {
         await fetch(`${API}/health`, { method: 'GET', signal: AbortSignal.timeout(35000) });
-      } catch { /* Si falla, igual ocultamos — el error se verá en los datos */ }
+      } catch { /* ignorar — el error se verá en los datos de la tienda */ }
+
       if (!mounted) return;
-      setStatus('ready');
-      /* Dar 800ms para que el usuario vea el "✓ Listo" antes de cerrar */
-      setTimeout(() => { if (mounted) setShow(false); }, 900);
+      clearTimeout(showTimer); // cancelar si aún no apareció
+
+      if (shown) {
+        // El overlay ya se mostró → mostrar "¡Lista!" y cerrarlo
+        setStatus('ready');
+        setTimeout(() => { if (mounted) setShow(false); }, 900);
+      }
+      // Si `shown` es false el overlay nunca apareció → no hacer nada
     };
 
     ping();
@@ -51,7 +54,6 @@ export default function ServerWakeup() {
     return () => {
       mounted = false;
       clearTimeout(showTimer);
-      clearTimeout(timer);
       clearInterval(elapsedTimer);
     };
   }, []);
