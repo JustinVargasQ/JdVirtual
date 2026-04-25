@@ -17,10 +17,6 @@ const SHIPPING  = {
   express: { label: 'Express Puntarenas',    sub: 'Mismo día / día siguiente',    price: 1500, icon: '⚡' },
   pickup:  { label: 'Retiro en El Roble',    sub: 'Gratis · Lun–Sáb 9am–7pm',    price: 0,    icon: '🏠' },
 };
-const PAYMENT_METHODS = {
-  whatsapp: { label: 'Coordinar por WhatsApp', sub: 'Te indicamos cómo pagar al confirmar', icon: '💬' },
-  sinpe:    { label: 'SINPE Móvil',            sub: '8673-7114 · Justin Vargas Quiros',     icon: '📱' },
-};
 const SINPE_NUMBER = '8673-7114';
 const SINPE_NAME   = 'Justin Vargas Quiros';
 const isPickup = (s) => s === 'pickup';
@@ -153,7 +149,6 @@ export default function Checkout() {
 
   const navigate  = useNavigate();
   const [shipping, setShipping] = useState('correos');
-  const [payment,  setPayment]  = useState('whatsapp');
   const [form, setForm] = useState({ name:'', phone:'', email:'', province:'Puntarenas', address:'', notes:'', lat:null, lng:null });
   const [errors,  setErrors]  = useState({});
   const [touched, setTouched] = useState({});
@@ -238,7 +233,6 @@ export default function Checkout() {
       shippingMethod: SHIPPING[shipping].label,
       shippingCost,
       coupon: coupon ? { code: coupon.code, discount, freeShipping: coupon.freeShipping } : null,
-      paymentMethod: PAYMENT_METHODS[payment].label,
     };
 
     let orderNumber = null;
@@ -298,7 +292,7 @@ export default function Checkout() {
             </div>
             {/* Progress pills */}
             <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold">
-              {['Datos','Envío','Confirmar'].map((s, i) => (
+              {['Datos','Envío'].map((s, i) => (
                 <div key={s} className="flex items-center gap-1.5">
                   <span className={`px-3 py-1 rounded-full ${i === 0 ? 'bg-rose-500 text-white' : 'bg-white text-ink-400 border border-cream-200'}`}>
                     {i + 1}. {s}
@@ -316,7 +310,7 @@ export default function Checkout() {
           <div className="space-y-5">
 
             {/* Contact */}
-            <Section step="1/3" icon="👤" title="Datos de contacto" sub="Información para coordinar tu pedido">
+            <Section step="1/2" icon="👤" title="Datos de contacto" sub="Información para coordinar tu pedido">
               <div className="grid sm:grid-cols-2 gap-4">
 
                 <Field label="Nombre completo" required error={errors.name} touched={touched.name} icon={<UserIcon />}>
@@ -438,7 +432,7 @@ export default function Checkout() {
             </Section>
 
             {/* Shipping */}
-            <Section step="2/3" icon="🚚" title="Método de envío" sub="Elegí cómo recibir tu pedido">
+            <Section step="2/2" icon="🚚" title="Método de envío" sub="Elegí cómo recibir tu pedido">
               <div className="space-y-2.5">
                 {Object.entries(SHIPPING).map(([key, val]) => (
                   <label key={key}
@@ -463,38 +457,6 @@ export default function Checkout() {
               </div>
             </Section>
 
-            {/* Payment */}
-            <Section step="3/3" icon="💳" title="Método de pago" sub="Elegís cómo pagás al confirmar">
-              <div className="space-y-2.5">
-                {Object.entries(PAYMENT_METHODS).map(([key, val]) => (
-                  <label key={key}
-                    className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-150 ${
-                      payment === key
-                        ? 'border-rose-400 bg-rose-50/60 shadow-sm'
-                        : 'border-cream-200 hover:border-rose-200 bg-white'
-                    }`}>
-                    <input type="radio" name="payment" value={key} checked={payment === key} onChange={() => setPayment(key)} className="accent-rose-500 flex-shrink-0" />
-                    <span className="text-xl flex-shrink-0">{val.icon}</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-ink-900">{val.label}</p>
-                      <p className="text-xs text-ink-400 mt-0.5">{val.sub}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              {payment === 'sinpe' && (
-                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 bg-green-50 border border-green-200 rounded-xl px-4 py-4">
-                  <p className="text-[10px] font-bold text-green-800 uppercase tracking-widest mb-2">Datos SINPE Móvil</p>
-                  <p className="text-2xl font-bold text-green-900 tracking-wider">{SINPE_NUMBER}</p>
-                  <p className="text-xs text-green-700 mt-0.5">{SINPE_NAME}</p>
-                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    Enviá el comprobante por WhatsApp después de pagar
-                  </p>
-                </motion.div>
-              )}
-            </Section>
           </div>
 
           {/* ── Right — sticky summary ── */}

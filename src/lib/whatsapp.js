@@ -55,10 +55,6 @@ export function buildWhatsAppMessage(items, customer = null, orderNumber = null)
     parts.push('', '*NOTAS*', customer.notes.trim());
   }
 
-  if (customer?.paymentMethod) {
-    parts.push('', `*PAGO*: ${customer.paymentMethod}`);
-  }
-
   parts.push('', '━━━━━━━━━━━━━━━━━━');
 
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(parts.join('\n'))}`;
