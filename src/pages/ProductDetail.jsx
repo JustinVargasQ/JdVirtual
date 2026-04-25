@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProduct, useProducts } from '../hooks/useProducts';
 import useCart from '../hooks/useCart';
+import useWishlist from '../hooks/useWishlist';
 import useWhatsApp from '../hooks/useWhatsApp';
 import { formatCRC } from '../lib/currency';
 import ProductCard from '../components/ui/ProductCard';
@@ -204,6 +205,7 @@ export default function ProductDetail() {
   const { slug } = useParams();
   const { product, loading } = useProduct(slug);
   const { addItem, openCart } = useCart();
+  const { has: isFav, toggle: toggleFav } = useWishlist();
   const { openOrder } = useWhatsApp();
   const [qty, setQty]               = useState(1);
   const [added, setAdded]           = useState(false);
@@ -501,11 +503,30 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="flex gap-3 mb-6">
               <button onClick={handleAdd}
                 className={`flex-1 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 ${added ? 'bg-emerald-500 text-white scale-[0.98]' : 'bg-rose-500 hover:bg-rose-600 active:scale-[0.98] text-white shadow-btn'}`}>
                 {added ? '✓ Agregado al carrito' : 'Añadir a la cesta'}
               </button>
+              <motion.button
+                onClick={() => toggleFav(product)}
+                aria-label={isFav(product) ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                whileTap={{ scale: 0.85 }}
+                animate={isFav(product) ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+                transition={{ duration: 0.35, ease: [0.3, 1, 0.3, 1] }}
+                className={`w-[52px] flex-shrink-0 flex items-center justify-center rounded-xl border-2 transition-all duration-200 ${
+                  isFav(product)
+                    ? 'bg-rose-500 border-rose-500 text-white shadow-btn'
+                    : 'bg-white border-cream-200 hover:border-rose-400 text-ink-500 hover:text-rose-500'
+                }`}>
+                <svg width="20" height="20" viewBox="0 0 24 24"
+                  fill={isFav(product) ? 'currentColor' : 'none'}
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </motion.button>
+            </div>
+            <div className="flex gap-3 mb-3">
               <button onClick={handleBuyWa}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1db954] active:scale-[0.98] text-white font-semibold text-sm py-3.5 rounded-xl transition-all duration-200">
                 <WaIcon /> Comprar por WhatsApp

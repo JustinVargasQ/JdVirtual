@@ -1,12 +1,89 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
 import useWhatsApp from '../../hooks/useWhatsApp';
 import { formatCRC } from '../../lib/currency';
 
-const CloseIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>;
-const TrashIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
-const WaIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
+const CloseIcon  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>;
+const TrashIcon  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+const WaIcon     = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
+const TagIcon    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>;
+
+/* ── Coupon input strip ── */
+function CouponStrip({ couponCode, setCoupon, clearCoupon }) {
+  const [input,  setInput]  = useState(couponCode || '');
+  const [open,   setOpen]   = useState(!!couponCode);
+  const [saved,  setSaved]  = useState(!!couponCode);
+
+  const apply = () => {
+    const code = input.trim().toUpperCase();
+    if (!code) return;
+    setCoupon(code);
+    setSaved(true);
+  };
+
+  const remove = () => {
+    setInput('');
+    setSaved(false);
+    clearCoupon();
+  };
+
+  return (
+    <div className="border-t border-cream-100 pt-3">
+      {!open ? (
+        <button onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-ink-500 hover:text-rose-500 transition-colors w-full py-1">
+          <TagIcon />
+          <span>¿Tenés un cupón de descuento?</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-auto">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      ) : (
+        <AnimatePresence mode="wait">
+          {saved && couponCode ? (
+            <motion.div key="saved"
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600"><polyline points="20 6 9 17 4 12"/></svg>
+                <span className="text-xs font-bold text-emerald-700">Cupón aplicado:</span>
+                <span className="font-mono text-xs font-bold text-emerald-800 tracking-wider">{couponCode}</span>
+              </div>
+              <button onClick={remove} className="text-emerald-400 hover:text-emerald-700 transition-colors ml-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div key="input"
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+              <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wider mb-1.5">Cupón de descuento</p>
+              <div className="flex gap-2">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && apply()}
+                  placeholder="CÓDIGO"
+                  maxLength={20}
+                  className="flex-1 font-mono text-sm font-bold tracking-wider bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 uppercase placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all"
+                />
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={apply}
+                  disabled={!input.trim()}
+                  className="px-4 py-2 bg-ink-900 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-40">
+                  Aplicar
+                </motion.button>
+              </div>
+              <p className="text-[10px] text-ink-400 mt-1.5">El descuento se aplica al finalizar el pedido.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
 
 /* ── Order progress tracker ── */
 const STEPS = [
@@ -70,7 +147,7 @@ function OrderProgress({ hasItems }) {
 }
 
 export default function CartDrawer() {
-  const { items, isOpen, closeCart, removeItem, updateQty, total } = useCart();
+  const { items, isOpen, closeCart, removeItem, updateQty, total, couponCode, setCoupon, clearCoupon } = useCart();
   const { openOrder } = useWhatsApp();
 
   return (
@@ -170,11 +247,20 @@ export default function CartDrawer() {
 
             {/* Footer */}
             {items.length > 0 && (
-              <div className="border-t border-cream-200 px-6 py-6 space-y-4 bg-white">
-                <div className="flex items-center justify-between">
+              <div className="border-t border-cream-200 px-6 pt-5 pb-6 space-y-4 bg-white">
+                {/* Coupon strip */}
+                <CouponStrip couponCode={couponCode} setCoupon={setCoupon} clearCoupon={clearCoupon} />
+
+                {/* Subtotal */}
+                <div className="flex items-center justify-between pt-1">
                   <span className="font-semibold text-ink-700">Subtotal</span>
                   <span className="font-bold text-xl text-ink-900">{formatCRC(total)}</span>
                 </div>
+                {couponCode && (
+                  <p className="text-[11px] text-emerald-600 font-medium -mt-2">
+                    ✓ Cupón <span className="font-mono font-bold">{couponCode}</span> guardado — se aplica al finalizar.
+                  </p>
+                )}
                 <p className="text-xs text-ink-400">Envío coordinado por WhatsApp según tu provincia.</p>
 
                 <motion.button
@@ -184,7 +270,8 @@ export default function CartDrawer() {
                   <WaIcon /> Pedir por WhatsApp
                 </motion.button>
 
-                <Link to="/checkout" onClick={closeCart}
+                <Link to={`/checkout${couponCode ? `?cupon=${encodeURIComponent(couponCode)}` : ''}`}
+                  onClick={closeCart}
                   className="w-full flex items-center justify-center border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white font-bold py-3.5 rounded-2xl transition-all duration-300 text-center text-sm">
                   Finalizar con formulario →
                 </Link>
