@@ -5,7 +5,14 @@ import { formatCRC } from '../../lib/currency';
 import useToastStore from '../../store/toastStore';
 
 const USE_API = import.meta.env.VITE_API_URL;
-const CATEGORIES = ['ojos', 'labios', 'rostro', 'skincare', 'maquillaje', 'cabello'];
+const CATEGORIES = [
+  { value: 'maquillaje', label: 'Maquillaje' },
+  { value: 'ojos',       label: 'Ojos'       },
+  { value: 'labios',     label: 'Labios'     },
+  { value: 'rostro',     label: 'Rostro'     },
+  { value: 'skincare',   label: 'Skincare'   },
+  { value: 'cabello',    label: 'Cabello'    },
+];
 
 const EMPTY = {
   name: '', slug: '', brand: '', category: 'maquillaje',
@@ -60,6 +67,7 @@ export default function ProductForm() {
   const [error, setError]             = useState('');
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [uploading, setUploading]     = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const fileRef = useRef(null);
   const [restockReqs, setRestockReqs] = useState([]);
 
@@ -276,58 +284,74 @@ export default function ProductForm() {
         <div className="lg:col-span-2 space-y-5">
 
           {/* Información básica */}
-          <SectionCard icon="📝" title="Información básica">
+          <SectionCard icon="📝" title="Datos del producto">
             <div>
-              <label className={labelCls}>Nombre *</label>
+              <label className={labelCls}>Nombre del producto *</label>
               <input value={form.name} onChange={setField('name')}
-                className={inputCls} placeholder="Paleta de sombras 35 colores" required />
+                className={inputCls} placeholder="Ej: Paleta de sombras 35 colores" required />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Marca *</label>
                 <input value={form.brand} onChange={setField('brand')}
-                  className={inputCls} placeholder="Beauty Creations" required />
+                  className={inputCls} placeholder="Ej: Beauty Creations" required />
               </div>
               <div>
                 <label className={labelCls}>Categoría *</label>
                 <select value={form.category} onChange={setField('category')}
-                  className={inputCls + ' cursor-pointer capitalize'}>
-                  {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
+                  className={inputCls + ' cursor-pointer'}>
+                  {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label className={labelCls}>Slug (URL)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs font-mono">/producto/</span>
-                <input
-                  value={form.slug}
-                  onChange={(e) => { setSlugTouched(true); set('slug', slugify(e.target.value)); }}
-                  className={inputCls + ' pl-20 font-mono text-xs'} placeholder="nombre-del-producto" />
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>Descripción</label>
+              <label className={labelCls}>Descripción del producto</label>
               <textarea value={form.description} onChange={setField('description')} rows={4}
-                className={inputCls + ' resize-none'} placeholder="Descripción breve del producto..." />
+                className={inputCls + ' resize-none'} placeholder="Contá qué hace el producto, para qué tipo de piel es, qué resultado da..." />
+            </div>
+
+            {/* Opciones avanzadas — slug */}
+            <div>
+              <button type="button" onClick={() => setShowAdvanced((v) => !v)}
+                className="text-[11px] text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}>
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+                Opciones avanzadas
+              </button>
+              {showAdvanced && (
+                <div className="mt-3">
+                  <label className={labelCls}>Link del producto (se genera automático)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs font-mono">/producto/</span>
+                    <input
+                      value={form.slug}
+                      onChange={(e) => { setSlugTouched(true); set('slug', slugify(e.target.value)); }}
+                      className={inputCls + ' pl-20 font-mono text-xs'} placeholder="nombre-del-producto" />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">No hace falta cambiarlo, se genera solo desde el nombre.</p>
+                </div>
+              )}
             </div>
           </SectionCard>
 
           {/* Características */}
-          <SectionCard icon="✨" title="Características"
+          <SectionCard icon="✨" title="Puntos clave del producto"
             action={
               <button type="button" onClick={addFeature}
                 className="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Agregar
+                Agregar punto
               </button>
             }>
+            <p className="text-[11px] text-gray-400 -mt-1">Beneficios o características cortas que se muestran como lista en la tienda.</p>
             {form.features.map((f, i) => (
               <div key={i} className="flex gap-2">
                 <div className="flex items-center gap-2 flex-1">
                   <span className="w-5 h-5 rounded-full bg-rose-50 text-rose-400 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                   <input value={f} onChange={(e) => setFeature(i, e.target.value)}
-                    className={inputCls} placeholder={`Característica ${i + 1}`} />
+                    className={inputCls} placeholder={`Ej: Fórmula larga duración, vegano y cruelty-free...`} />
                 </div>
                 {form.features.length > 1 && (
                   <button type="button" onClick={() => removeFeature(i)}
@@ -340,7 +364,7 @@ export default function ProductForm() {
           </SectionCard>
 
           {/* Variantes */}
-          <SectionCard icon="🎨" title="Variantes (colores, tallas, tonos...)"
+          <SectionCard icon="🎨" title="Opciones del producto"
             action={
               <button type="button" onClick={addVariant}
                 className="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1">
@@ -350,7 +374,8 @@ export default function ProductForm() {
             }>
             {(!form.variants || form.variants.length === 0) && (
               <div className="text-center py-4">
-                <p className="text-sm text-gray-400">Sin variantes. Agregá grupos como "Color", "Talla", "Tono"...</p>
+                <p className="text-sm text-gray-400">Si el producto viene en varios colores, tonos o tallas, agregá un grupo aquí.</p>
+                <p className="text-[11px] text-gray-300 mt-1">Ej: grupo "Tono" con opciones Butter, Pink, Translucido...</p>
               </div>
             )}
             {(form.variants || []).map((v, vi) => (
@@ -428,7 +453,7 @@ export default function ProductForm() {
           )}
 
           {/* Imágenes */}
-          <SectionCard icon="🖼️" title="Imágenes"
+          <SectionCard icon="🖼️" title="Fotos del producto"
             action={
               <button type="button" onClick={() => fileRef.current?.click()}
                 disabled={!isEdit || uploading}
@@ -495,9 +520,9 @@ export default function ProductForm() {
         <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
 
           {/* Precio e inventario */}
-          <SectionCard icon="💰" title="Precio e inventario">
+          <SectionCard icon="💰" title="Precio y stock">
             <div>
-              <label className={labelCls}>Precio (CRC) *</label>
+              <label className={labelCls}>Precio de venta *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₡</span>
                 <input type="number" min="0" value={form.price} onChange={setField('price')}
@@ -509,11 +534,11 @@ export default function ProductForm() {
             </div>
 
             <div>
-              <label className={labelCls}>Precio anterior <span className="normal-case font-normal">(opcional)</span></label>
+              <label className={labelCls}>Precio anterior (para mostrar descuento)</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs font-bold">₡</span>
                 <input type="number" min="0" value={form.oldPrice} onChange={setField('oldPrice')}
-                  className={inputCls + ' pl-7'} placeholder="15000" />
+                  className={inputCls + ' pl-7'} placeholder="Si tenía precio mayor, ponerlo aquí" />
               </div>
               {discount > 0 && (
                 <div className="mt-1.5 flex items-center gap-1.5">
@@ -523,45 +548,45 @@ export default function ProductForm() {
             </div>
 
             <div>
-              <label className={labelCls}>Stock</label>
+              <label className={labelCls}>Cantidad disponible en inventario</label>
               <input type="number" min="0" value={form.stock} onChange={setField('stock')}
-                placeholder="Vacío = ilimitado" className={inputCls} />
-              <p className="text-[11px] text-gray-400 mt-1">Dejá vacío si no querés controlar el inventario.</p>
+                placeholder="Dejalo vacío si no querés llevar control de stock" className={inputCls} />
             </div>
 
             <div className="flex items-center justify-between pt-2 pb-1">
               <div>
-                <p className="text-sm font-semibold text-gray-700">Visible en tienda</p>
-                <p className="text-[11px] text-gray-400">Los clientes pueden verlo y comprarlo</p>
+                <p className="text-sm font-semibold text-gray-700">Mostrar en la tienda</p>
+                <p className="text-[11px] text-gray-400">Las clientas pueden verlo y comprarlo</p>
               </div>
               <Toggle checked={form.isActive} onChange={(v) => set('isActive', v)} />
             </div>
           </SectionCard>
 
           {/* Etiqueta */}
-          <SectionCard icon="🏷️" title="Etiqueta (badge)">
+          <SectionCard icon="🏷️" title="Etiqueta especial">
+            <p className="text-[11px] text-gray-400 -mt-1">Aparece como un chip encima de la foto del producto en la tienda.</p>
             <div>
-              <label className={labelCls}>Texto</label>
+              <label className={labelCls}>Texto de la etiqueta</label>
               <input value={form.badge} onChange={setField('badge')} className={inputCls}
-                placeholder="Top ventas, Nuevo, Oferta..." />
+                placeholder="Ej: Top ventas, Nuevo, Oferta, Favorito..." />
             </div>
             <div>
-              <label className={labelCls}>Tipo</label>
+              <label className={labelCls}>Color de la etiqueta</label>
               <select value={form.badgeType} onChange={setField('badgeType')} className={inputCls + ' cursor-pointer'}>
-                <option value="">Normal</option>
-                <option value="new">Nuevo</option>
-                <option value="sale">Oferta</option>
-                <option value="hot">Destacado</option>
+                <option value="">Rosado (normal)</option>
+                <option value="new">Azul (Nuevo)</option>
+                <option value="sale">Rojo (Oferta)</option>
+                <option value="hot">Naranja (Destacado)</option>
               </select>
             </div>
             {form.badge && (
               <div className="pt-1">
-                <p className="text-[11px] text-gray-400 mb-2">Vista previa:</p>
+                <p className="text-[11px] text-gray-400 mb-2">Así se va a ver:</p>
                 <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full ${
                   form.badgeType === 'new'  ? 'bg-blue-100 text-blue-700' :
                   form.badgeType === 'sale' ? 'bg-red-100 text-red-700' :
                   form.badgeType === 'hot'  ? 'bg-orange-100 text-orange-700' :
-                  'bg-gray-100 text-gray-700'
+                  'bg-rose-100 text-rose-700'
                 }`}>
                   {form.badge}
                 </span>

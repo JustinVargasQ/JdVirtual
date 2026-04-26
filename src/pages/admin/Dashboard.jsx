@@ -239,6 +239,57 @@ function LowStock({ products }) {
   );
 }
 
+/* ── Guía de inicio ── */
+function GuiaInicio() {
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('jd_guia_ok') === '1');
+  if (dismissed) return null;
+
+  const pasos = [
+    { n: '1', icon: '📝', title: 'Crear el producto', desc: 'Ir a Productos → Nuevo producto. Ponele nombre, marca, categoría y precio.' },
+    { n: '2', icon: '🖼️', title: 'Subir las fotos',   desc: 'Guardá el producto primero y luego subí las fotos. La primera foto es la principal.' },
+    { n: '3', icon: '👁️', title: 'Activarlo',          desc: 'Activá el toggle "Mostrar en la tienda" para que las clientas puedan verlo.' },
+    { n: '4', icon: '📦', title: 'Recibir pedidos',    desc: 'Los pedidos llegan aquí en Órdenes y también por WhatsApp directamente.' },
+  ];
+
+  return (
+    <div className="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-100 rounded-2xl p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h3 className="font-display text-base font-bold text-gray-900 mb-0.5">Guía rápida para cargar productos</h3>
+          <p className="text-[12px] text-gray-500">Seguí estos 4 pasos para agregar un producto a la tienda.</p>
+        </div>
+        <button onClick={() => { localStorage.setItem('jd_guia_ok', '1'); setDismissed(true); }}
+          className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 mt-0.5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {pasos.map((p) => (
+          <div key={p.n} className="bg-white rounded-xl p-4 border border-rose-100/60 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">{p.n}</span>
+              <span className="text-base">{p.icon}</span>
+            </div>
+            <p className="text-[12px] font-bold text-gray-800 mb-1">{p.title}</p>
+            <p className="text-[11px] text-gray-400 leading-relaxed">{p.desc}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Link to="/admin/productos/nuevo"
+          className="inline-flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Cargar primer producto
+        </Link>
+        <button onClick={() => { localStorage.setItem('jd_guia_ok', '1'); setDismissed(true); }}
+          className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+          Ya entendí, ocultar guía
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Dashboard home page ── */
 function DashboardHome({ adminName }) {
   const hour     = new Date().getHours();
@@ -287,6 +338,9 @@ function DashboardHome({ adminName }) {
 
   return (
     <div className="space-y-6">
+      {/* Guía de inicio */}
+      <GuiaInicio />
+
       {/* Greeting */}
       <div className="bg-ink-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
         <div className="pointer-events-none absolute -top-8 -right-8 w-48 h-48 rounded-full bg-rose-500/15 blur-3xl" />
