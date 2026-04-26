@@ -26,9 +26,11 @@ const CAT_LINKS = [
 ];
 
 const PAGE_LINKS = [
-  { label: '🏷️ Ofertas',        href: '/ofertas'  },
-  { label: '❤️ Favoritos',      href: '/favoritos' },
-  { label: '🔍 Rastrear pedido', href: '/pedido'   },
+  { label: '🏷️ Ofertas',        href: '/ofertas'      },
+  { label: '❤️ Favoritos',      href: '/favoritos'     },
+  { label: '🔍 Rastrear pedido', href: '/pedido'       },
+  { label: '🛒 ¿Cómo comprar?', href: '/como-comprar' },
+  { label: '🔒 Privacidad',     href: '/privacidad'   },
 ];
 
 export default function Footer() {

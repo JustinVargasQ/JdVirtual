@@ -13,6 +13,8 @@ import Confirmation from './pages/Confirmation';
 import OrderTracking from './pages/OrderTracking';
 import Wishlist from './pages/Wishlist';
 import Offers from './pages/Offers';
+import HowToBuy from './pages/HowToBuy';
+import Privacy from './pages/Privacy';
 import AdminLogin from './pages/admin/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
@@ -25,6 +27,7 @@ import useAuthStore from './store/authStore';
 import InstallBanner from './components/ui/InstallBanner';
 import PromoBanner from './components/ui/PromoBanner';
 import ServerWakeup from './components/ui/ServerWakeup';
+import WhatsAppFloat from './components/ui/WhatsAppFloat';
 
 function StorefrontLayout({ children }) {
   const location = useLocation();
@@ -65,6 +68,7 @@ export default function App() {
       <ServerWakeup />
       <Toaster />
       <InstallBanner />
+      <WhatsAppFloat />
       <PageTracker />
       <Routes>
         {/* Public storefront */}
@@ -76,6 +80,8 @@ export default function App() {
         <Route path="/ofertas" element={<StorefrontLayout><Offers /></StorefrontLayout>} />
         <Route path="/pedido" element={<StorefrontLayout><OrderTracking /></StorefrontLayout>} />
         <Route path="/pedido/:number" element={<StorefrontLayout><OrderTracking /></StorefrontLayout>} />
+        <Route path="/como-comprar" element={<StorefrontLayout><HowToBuy /></StorefrontLayout>} />
+        <Route path="/privacidad" element={<StorefrontLayout><Privacy /></StorefrontLayout>} />
 
         {/* Admin */}
         <Route path="/admin/login" element={<AdminLogin />} />
