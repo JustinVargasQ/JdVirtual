@@ -16,6 +16,6 @@ router.post('/',                      requireAuth, ctrl.create);
 router.put('/:id',                    requireAuth, ctrl.update);
 router.delete('/:id',                 requireAuth, ctrl.remove);
 router.patch('/:id/toggle',           requireAuth, ctrl.toggleActive);
-router.post('/:id/images', requireAuth, upload.array('images', 8), ctrl.uploadImages);
+router.post('/:id/images', requireAuth, upload.array('images', 8), upload.toCloud, ctrl.uploadImages);
 
 module.exports = router;

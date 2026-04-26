@@ -144,8 +144,8 @@ exports.remove = async (req, res, next) => {
 
 exports.uploadImages = async (req, res, next) => {
   try {
-    if (!req.files?.length) return res.status(400).json({ error: 'No se recibieron imágenes' });
-    const urls = req.files.map((f) => `/uploads/${f.filename}`);
+    if (!req.cloudinaryFiles?.length) return res.status(400).json({ error: 'No se recibieron imágenes' });
+    const urls = req.cloudinaryFiles.map((f) => f.url);
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       { $push: { images: { $each: urls } } },

@@ -1,8 +1,13 @@
-const multer = require('multer');
-const path   = require('path');
-const crypto = require('crypto');
+const multer     = require('multer');
+const path       = require('path');
+const cloudinary = require('cloudinary').v2;
 
-/* Allowed MIME types — both extension AND mime must match */
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 const ALLOWED = {
   '.jpg':  'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -11,12 +16,11 @@ const ALLOWED = {
   '.gif':  'image/gif',
 };
 
-/* Known magic bytes for each type */
 const MAGIC = [
   { mime: 'image/jpeg', bytes: [0xFF, 0xD8, 0xFF] },
   { mime: 'image/png',  bytes: [0x89, 0x50, 0x4E, 0x47] },
   { mime: 'image/gif',  bytes: [0x47, 0x49, 0x46] },
-  { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF header
+  { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46] },
 ];
 
 function matchesMagic(buffer, mime) {
@@ -25,60 +29,56 @@ function matchesMagic(buffer, mime) {
   return entry.bytes.every((b, i) => buffer[i] === b);
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
-  filename: (req, file, cb) => {
-    // Random hex name — no user-controlled input in filename
-    const rand = crypto.randomBytes(16).toString('hex');
-    const ext  = path.extname(file.originalname).toLowerCase();
-    cb(null, `${Date.now()}-${rand}${ext}`);
-  },
-});
-
 const fileFilter = (req, file, cb) => {
-  const ext      = path.extname(file.originalname).toLowerCase();
-  const mimeOk   = ALLOWED[ext];
-
-  // Extension must be in allowed list AND reported MIME must match
+  const ext    = path.extname(file.originalname).toLowerCase();
+  const mimeOk = ALLOWED[ext];
   if (!mimeOk || file.mimetype !== mimeOk) {
     return cb(new Error(`Tipo de archivo no permitido: ${file.mimetype}`), false);
   }
   cb(null, true);
 };
 
+// Store in memory — no disk write, validated then streamed to Cloudinary
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024,  // 5 MB
-    files: 10,                   // max 10 archivos por request
-  },
+  limits: { fileSize: 5 * 1024 * 1024, files: 10 },
 });
 
-/* Middleware adicional: verificar magic bytes del archivo ya guardado */
-upload.verifyMagicBytes = async (req, res, next) => {
-  if (!req.files?.length && !req.file) return next();
+function streamToCloudinary(buffer) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'jdvirtual', resource_type: 'image' },
+      (err, result) => (err ? reject(err) : resolve(result))
+    );
+    stream.end(buffer);
+  });
+}
 
-  const fs = require('fs').promises;
-  const filesToCheck = req.files || (req.file ? [req.file] : []);
+// Validate magic bytes then upload each file to Cloudinary.
+// Attaches req.cloudinaryFiles = [{ url, publicId }] for the controller.
+upload.toCloud = async (req, res, next) => {
+  const files = req.files?.length ? req.files : req.file ? [req.file] : [];
+  if (!files.length) return next();
 
-  for (const f of filesToCheck) {
+  const results = [];
+  for (const f of files) {
+    if (!matchesMagic(f.buffer, f.mimetype)) {
+      return res.status(400).json({ error: 'El archivo no es una imagen válida.' });
+    }
     try {
-      const fd = await fs.open(f.path, 'r');
-      const buf = Buffer.alloc(8);
-      await fd.read(buf, 0, 8, 0);
-      await fd.close();
-
-      if (!matchesMagic(buf, f.mimetype)) {
-        // Delete the file and reject
-        await fs.unlink(f.path).catch(() => {});
-        return res.status(400).json({ error: 'El archivo no es una imagen válida.' });
-      }
+      const result = await streamToCloudinary(f.buffer);
+      results.push({ url: result.secure_url, publicId: result.public_id });
     } catch {
-      return res.status(500).json({ error: 'Error al verificar el archivo.' });
+      return res.status(500).json({ error: 'Error al subir la imagen a la nube.' });
     }
   }
+  req.cloudinaryFiles = results;
   next();
 };
+
+// Delete an image from Cloudinary by its public_id
+upload.deleteFromCloud = (publicId) =>
+  cloudinary.uploader.destroy(publicId).catch(() => {});
 
 module.exports = upload;

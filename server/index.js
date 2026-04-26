@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 /* ─── Validate required env vars before anything else ─── */
-const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET'];
+const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
 const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missingEnv.length) {
   console.error(`❌ Variables de entorno faltantes: ${missingEnv.join(', ')}`);
