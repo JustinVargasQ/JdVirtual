@@ -1,10 +1,10 @@
-const jwt         = require('jsonwebtoken');
-const Admin       = require('../models/Admin');
-const SecurityLog = require('../models/SecurityLog');
+const jwt          = require('jsonwebtoken');
+const Admin        = require('../models/Admin');
+const SecurityLog  = require('../models/SecurityLog');
+const LoginAttempt = require('../models/LoginAttempt');
 
-const FAILED_ATTEMPTS = new Map(); // ip → { count, lockedUntil }
-const MAX_ATTEMPTS    = 5;
-const LOCK_MINUTES    = 15;
+const MAX_ATTEMPTS = 5;
+const LOCK_MINUTES = 15;
 
 function logEvent(type, ip, email) {
   SecurityLog.create({ type, ip, email }).catch(() => {});
@@ -12,7 +12,7 @@ function logEvent(type, ip, email) {
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES || '8h',  // reducido de 7d a 8h
+    expiresIn: process.env.JWT_EXPIRES || '8h',
   });
 
 function getClientIp(req) {
@@ -27,10 +27,11 @@ exports.login = async (req, res, next) => {
   try {
     const ip = getClientIp(req);
 
-    /* ── Brute-force lockout (en memoria; complementa el rate limiter) ── */
-    const record = FAILED_ATTEMPTS.get(ip) || { count: 0, lockedUntil: null };
-    if (record.lockedUntil && record.lockedUntil > Date.now()) {
-      const secsLeft = Math.ceil((record.lockedUntil - Date.now()) / 1000);
+    /* ── Brute-force lockout persistente en MongoDB ── */
+    const attempt = await LoginAttempt.findOne({ ip });
+
+    if (attempt?.lockedUntil && attempt.lockedUntil > new Date()) {
+      const secsLeft = Math.ceil((attempt.lockedUntil - Date.now()) / 1000);
       return res.status(429).json({
         error: `Cuenta temporalmente bloqueada. Intentá en ${secsLeft} segundos.`,
       });
@@ -47,8 +48,7 @@ exports.login = async (req, res, next) => {
     }
 
     const sanitizedEmail = email.trim().toLowerCase();
-    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRx.test(sanitizedEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
       return res.status(400).json({ error: 'Formato de email inválido' });
     }
 
@@ -57,26 +57,31 @@ exports.login = async (req, res, next) => {
     const valid = admin && (await admin.comparePassword(password));
 
     if (!valid) {
-      // Track failed attempt
-      record.count++;
-      if (record.count >= MAX_ATTEMPTS) {
-        record.lockedUntil = Date.now() + LOCK_MINUTES * 60 * 1000;
-        record.count = 0;
-        FAILED_ATTEMPTS.set(ip, record);
+      const newCount = (attempt?.count || 0) + 1;
+      const isBlocked = newCount >= MAX_ATTEMPTS;
+      const lockedUntil = isBlocked ? new Date(Date.now() + LOCK_MINUTES * 60 * 1000) : null;
+
+      await LoginAttempt.findOneAndUpdate(
+        { ip },
+        { count: isBlocked ? 0 : newCount, lockedUntil, updatedAt: new Date() },
+        { upsert: true, new: true }
+      );
+
+      if (isBlocked) {
         console.warn(`🔒 Login bloqueado para IP ${ip} por ${LOCK_MINUTES} min`);
         logEvent('login_blocked', ip, sanitizedEmail);
         return res.status(429).json({
           error: `Demasiados intentos fallidos. Bloqueado por ${LOCK_MINUTES} minutos.`,
         });
       }
-      FAILED_ATTEMPTS.set(ip, record);
-      console.warn(`⚠️  Login fallido para "${sanitizedEmail}" desde ${ip} (intento ${record.count})`);
+
+      console.warn(`⚠️  Login fallido para "${sanitizedEmail}" desde ${ip} (intento ${newCount})`);
       logEvent('login_fail', ip, sanitizedEmail);
       return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
 
-    /* ── Success: reset attempts ── */
-    FAILED_ATTEMPTS.delete(ip);
+    /* ── Success: limpiar intentos fallidos ── */
+    await LoginAttempt.deleteOne({ ip }).catch(() => {});
     console.info(`✅ Login exitoso: ${sanitizedEmail} desde ${ip}`);
     logEvent('login_ok', ip, sanitizedEmail);
 
