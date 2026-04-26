@@ -8,20 +8,10 @@ const USE_API = import.meta.env.VITE_API_URL;
 const CATEGORIES = ['ojos', 'labios', 'rostro', 'skincare', 'maquillaje', 'cabello'];
 
 const EMPTY = {
-  name: '',
-  slug: '',
-  brand: '',
-  category: 'maquillaje',
-  price: '',
-  oldPrice: '',
-  description: '',
-  features: [''],
-  images: [],
-  stock: '',
-  isActive: true,
-  badge: '',
-  badgeType: '',
-  variants: [],
+  name: '', slug: '', brand: '', category: 'maquillaje',
+  price: '', oldPrice: '', description: '',
+  features: [''], images: [], stock: '',
+  isActive: true, badge: '', badgeType: '', variants: [],
 };
 
 function slugify(s = '') {
@@ -31,8 +21,32 @@ function slugify(s = '') {
     .replace(/^-+|-+$/g, '');
 }
 
-const inputCls = 'w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-ink-900 placeholder-ink-300 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white';
-const labelCls = 'block text-[11px] font-bold text-ink-500 uppercase tracking-widest mb-1.5';
+const inputCls = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-white';
+const labelCls = 'block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5';
+
+function SectionCard({ icon, title, action, children, className = '' }) {
+  return (
+    <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ${className}`}>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+        <div className="flex items-center gap-2.5">
+          <span className="text-base">{icon}</span>
+          <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">{title}</span>
+        </div>
+        {action}
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  );
+}
+
+function Toggle({ checked, onChange }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? 'bg-rose-500' : 'bg-gray-200'}`}>
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  );
+}
 
 export default function ProductForm() {
   const { id } = useParams();
@@ -40,11 +54,12 @@ export default function ProductForm() {
   const isEdit = Boolean(id);
   const toast = useToastStore();
 
-  const [form, setForm]           = useState(EMPTY);
-  const [loading, setLoading]     = useState(isEdit);
-  const [saving, setSaving]       = useState(false);
-  const [error, setError]         = useState('');
+  const [form, setForm]               = useState(EMPTY);
+  const [loading, setLoading]         = useState(isEdit);
+  const [saving, setSaving]           = useState(false);
+  const [error, setError]             = useState('');
   const [slugTouched, setSlugTouched] = useState(isEdit);
+  const [uploading, setUploading]     = useState(false);
   const fileRef = useRef(null);
   const [restockReqs, setRestockReqs] = useState([]);
 
@@ -84,18 +99,14 @@ export default function ProductForm() {
         const found = (data.products || []).find((p) => (p._id || p.id) === id);
         if (found) {
           setForm({
-            ...EMPTY,
-            ...found,
+            ...EMPTY, ...found,
             oldPrice: found.oldPrice ?? '',
             features: found.features?.length ? found.features : [''],
             variants: found.variants?.length ? found.variants : [],
           });
-        } else {
-          setError('Producto no encontrado');
-        }
-      } catch {
-        setError('No se pudo cargar el producto');
-      } finally { setLoading(false); }
+        } else { setError('Producto no encontrado'); }
+      } catch { setError('No se pudo cargar el producto'); }
+      finally { setLoading(false); }
     })();
   }, [id, isEdit]);
 
@@ -106,37 +117,22 @@ export default function ProductForm() {
     if (k === 'name' && !slugTouched) set('slug', slugify(v));
   };
 
-  const setFeature = (idx, v) => {
-    const arr = [...form.features];
-    arr[idx] = v;
-    set('features', arr);
-  };
+  const setFeature = (idx, v) => { const arr = [...form.features]; arr[idx] = v; set('features', arr); };
   const addFeature    = () => set('features', [...form.features, '']);
   const removeFeature = (idx) => set('features', form.features.filter((_, i) => i !== idx));
+  const removeImage   = (idx) => set('images', form.images.filter((_, i) => i !== idx));
 
-  const removeImage = (idx) => set('images', form.images.filter((_, i) => i !== idx));
-
-  const addVariant    = () => set('variants', [...(form.variants || []), { name: '', options: [''] }]);
-  const removeVariant = (vi) => set('variants', form.variants.filter((_, i) => i !== vi));
-  const setVariantName = (vi, v) => {
-    const arr = [...form.variants]; arr[vi] = { ...arr[vi], name: v }; set('variants', arr);
-  };
-  const addVariantOption = (vi) => {
-    const arr = [...form.variants]; arr[vi] = { ...arr[vi], options: [...arr[vi].options, ''] }; set('variants', arr);
-  };
-  const setVariantOption = (vi, oi, v) => {
-    const arr = [...form.variants]; arr[vi].options[oi] = v; set('variants', arr);
-  };
-  const removeVariantOption = (vi, oi) => {
-    const arr = [...form.variants]; arr[vi].options = arr[vi].options.filter((_, i) => i !== oi); set('variants', arr);
-  };
+  const addVariant      = () => set('variants', [...(form.variants || []), { name: '', options: [''] }]);
+  const removeVariant   = (vi) => set('variants', form.variants.filter((_, i) => i !== vi));
+  const setVariantName  = (vi, v) => { const arr = [...form.variants]; arr[vi] = { ...arr[vi], name: v }; set('variants', arr); };
+  const addVariantOption = (vi) => { const arr = [...form.variants]; arr[vi] = { ...arr[vi], options: [...arr[vi].options, ''] }; set('variants', arr); };
+  const setVariantOption = (vi, oi, v) => { const arr = [...form.variants]; arr[vi].options[oi] = v; set('variants', arr); };
+  const removeVariantOption = (vi, oi) => { const arr = [...form.variants]; arr[vi].options = arr[vi].options.filter((_, i) => i !== oi); set('variants', arr); };
 
   const uploadFiles = async (files) => {
     if (!files?.length) return;
-    if (!isEdit) {
-      setError('Guardá el producto primero para poder subir imágenes.');
-      return;
-    }
+    if (!isEdit) { setError('Guardá el producto primero para poder subir imágenes.'); return; }
+    setUploading(true);
     const fd = new FormData();
     [...files].forEach((f) => fd.append('images', f));
     try {
@@ -147,7 +143,7 @@ export default function ProductForm() {
       toast.success(`${data.urls.length} imagen${data.urls.length === 1 ? '' : 'es'} subida${data.urls.length === 1 ? '' : 's'}`);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Error al subir imágenes');
-    }
+    } finally { setUploading(false); }
   };
 
   const onSubmit = async (e) => {
@@ -200,169 +196,221 @@ export default function ProductForm() {
 
   if (!USE_API) {
     return (
-      <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-10 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-cream-100 flex items-center justify-center text-3xl mx-auto mb-5">📦</div>
-        <h2 className="font-display text-xl font-semibold text-ink-900 mb-2">Backend no conectado</h2>
-        <p className="text-ink-400 text-sm max-w-sm mx-auto leading-relaxed">
-          Configurá <code className="bg-cream-100 px-1.5 py-0.5 rounded text-rose-500 text-xs">VITE_API_URL</code> para crear y editar productos.
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center text-3xl mx-auto mb-5">📦</div>
+        <h2 className="font-display text-xl font-semibold text-gray-900 mb-2">Backend no conectado</h2>
+        <p className="text-gray-400 text-sm max-w-sm mx-auto leading-relaxed">
+          Configurá <code className="bg-gray-100 px-1.5 py-0.5 rounded text-rose-500 text-xs">VITE_API_URL</code> para crear y editar productos.
         </p>
       </div>
     );
   }
 
   if (loading) {
-    return <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-10 text-center text-ink-400">Cargando...</div>;
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+        <div className="w-8 h-8 border-2 border-rose-300 border-t-rose-500 rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-400 text-sm">Cargando producto...</p>
+      </div>
+    );
   }
 
-  return (
-    <form onSubmit={onSubmit} className="space-y-5 max-w-4xl">
+  const discount = form.price && form.oldPrice ? Math.round((1 - form.price / form.oldPrice) * 100) : 0;
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <Link to="/admin/productos" className="text-xs text-ink-400 hover:text-rose-500 font-medium inline-flex items-center gap-1 mb-1">
-            ← Productos
+  return (
+    <form onSubmit={onSubmit} className="space-y-6 max-w-5xl">
+
+      {/* ── Header ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4">
+          <Link to="/admin/productos"
+            className="w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
           </Link>
-          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink-900 leading-none">
-            {isEdit ? 'Editar producto' : 'Nuevo producto'}
-          </h1>
+          <div>
+            <p className="text-[11px] text-gray-400 font-medium mb-0.5">Panel de administración</p>
+            <h1 className="font-display text-xl font-bold text-gray-900 leading-none">
+              {isEdit ? 'Editar producto' : 'Nuevo producto'}
+            </h1>
+          </div>
+          {isEdit && (
+            <span className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full ${form.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${form.isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+              {form.isActive ? 'Activo' : 'Inactivo'}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <Link to="/admin/productos"
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-cream-200 text-ink-600 hover:bg-cream-50 transition-colors">
+            className="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
             Cancelar
           </Link>
           <button type="submit" disabled={saving}
-            className="bg-rose-500 hover:bg-rose-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-btn">
-            {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear producto'}
+            className="bg-rose-500 hover:bg-rose-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-5 py-2 rounded-xl transition-colors text-sm shadow-sm flex items-center gap-2">
+            {saving ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                {isEdit ? 'Guardar cambios' : 'Crear producto'}
+              </>
+            )}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {error}
+        </div>
       )}
 
-      {/* Main grid */}
+      {/* ── Main grid ── */}
       <div className="grid lg:grid-cols-3 gap-5">
 
-        {/* Left: basic info */}
+        {/* ── Left column ── */}
         <div className="lg:col-span-2 space-y-5">
 
-          <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5 sm:p-6 space-y-4">
-            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Información básica</p>
-
+          {/* Información básica */}
+          <SectionCard icon="📝" title="Información básica">
             <div>
               <label className={labelCls}>Nombre *</label>
-              <input value={form.name} onChange={setField('name')} className={inputCls} placeholder="Paleta de sombras 35 colores" required />
+              <input value={form.name} onChange={setField('name')}
+                className={inputCls} placeholder="Paleta de sombras 35 colores" required />
             </div>
-
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Marca *</label>
-                <input value={form.brand} onChange={setField('brand')} className={inputCls} placeholder="Beauty Creations" required />
+                <input value={form.brand} onChange={setField('brand')}
+                  className={inputCls} placeholder="Beauty Creations" required />
               </div>
               <div>
                 <label className={labelCls}>Categoría *</label>
-                <select value={form.category} onChange={setField('category')} className={inputCls + ' cursor-pointer capitalize'}>
+                <select value={form.category} onChange={setField('category')}
+                  className={inputCls + ' cursor-pointer capitalize'}>
                   {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
                 </select>
               </div>
             </div>
-
             <div>
               <label className={labelCls}>Slug (URL)</label>
-              <input
-                value={form.slug}
-                onChange={(e) => { setSlugTouched(true); set('slug', slugify(e.target.value)); }}
-                className={inputCls + ' font-mono text-xs'} placeholder="paleta-sombras-35-colores" />
-              <p className="text-[11px] text-ink-400 mt-1">Se genera automático desde el nombre. /producto/<span className="font-mono">{form.slug || '...'}</span></p>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs font-mono">/producto/</span>
+                <input
+                  value={form.slug}
+                  onChange={(e) => { setSlugTouched(true); set('slug', slugify(e.target.value)); }}
+                  className={inputCls + ' pl-20 font-mono text-xs'} placeholder="nombre-del-producto" />
+              </div>
             </div>
-
             <div>
               <label className={labelCls}>Descripción</label>
               <textarea value={form.description} onChange={setField('description')} rows={4}
                 className={inputCls + ' resize-none'} placeholder="Descripción breve del producto..." />
             </div>
-          </div>
+          </SectionCard>
 
-          {/* Features */}
-          <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5 sm:p-6 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Características</p>
+          {/* Características */}
+          <SectionCard icon="✨" title="Características"
+            action={
               <button type="button" onClick={addFeature}
-                className="text-xs text-rose-500 hover:text-rose-600 font-semibold">+ Agregar</button>
-            </div>
+                className="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Agregar
+              </button>
+            }>
             {form.features.map((f, i) => (
               <div key={i} className="flex gap-2">
-                <input value={f} onChange={(e) => setFeature(i, e.target.value)}
-                  className={inputCls} placeholder={`Característica ${i + 1}`} />
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="w-5 h-5 rounded-full bg-rose-50 text-rose-400 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                  <input value={f} onChange={(e) => setFeature(i, e.target.value)}
+                    className={inputCls} placeholder={`Característica ${i + 1}`} />
+                </div>
                 {form.features.length > 1 && (
                   <button type="button" onClick={() => removeFeature(i)}
-                    className="px-3 rounded-xl text-ink-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Eliminar">
-                    ×
+                    className="w-9 rounded-xl text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
                   </button>
                 )}
               </div>
             ))}
-          </div>
+          </SectionCard>
 
-          {/* Variants */}
-          <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Variantes (colores, tallas, tonos...)</p>
+          {/* Variantes */}
+          <SectionCard icon="🎨" title="Variantes (colores, tallas, tonos...)"
+            action={
               <button type="button" onClick={addVariant}
-                className="text-xs text-rose-500 hover:text-rose-600 font-semibold">+ Agregar grupo</button>
-            </div>
+                className="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Agregar grupo
+              </button>
+            }>
             {(!form.variants || form.variants.length === 0) && (
-              <p className="text-[11px] text-ink-400">Sin variantes. Agrega grupos como "Color", "Talla", "Tono"...</p>
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-400">Sin variantes. Agregá grupos como "Color", "Talla", "Tono"...</p>
+              </div>
             )}
             {(form.variants || []).map((v, vi) => (
-              <div key={vi} className="border border-cream-200 rounded-xl p-4 space-y-3">
-                <div className="flex gap-2 items-center">
+              <div key={vi} className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="flex gap-2 items-center bg-gray-50 px-3 py-2.5 border-b border-gray-100">
                   <input value={v.name} onChange={(e) => setVariantName(vi, e.target.value)}
-                    placeholder="Nombre del grupo (ej: Color)" className={inputCls + ' flex-1'} />
+                    placeholder="Nombre del grupo (ej: Color)"
+                    className="flex-1 bg-transparent text-sm font-semibold text-gray-700 placeholder-gray-400 outline-none" />
                   <button type="button" onClick={() => removeVariant(vi)}
-                    className="px-3 py-2.5 rounded-xl text-ink-400 hover:text-red-500 hover:bg-red-50 text-sm transition-colors">×</button>
+                    className="w-7 h-7 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
                 </div>
-                <div className="space-y-2">
+                <div className="p-3 space-y-2">
                   {v.options.map((opt, oi) => (
                     <div key={oi} className="flex gap-2">
                       <input value={opt} onChange={(e) => setVariantOption(vi, oi, e.target.value)}
-                        placeholder={`Opción ${oi + 1} (ej: Rosa)`} className={inputCls + ' flex-1 text-sm'} />
+                        placeholder={`Opción ${oi + 1} (ej: Rosa)`}
+                        className={inputCls + ' flex-1 text-sm'} />
                       {v.options.length > 1 && (
                         <button type="button" onClick={() => removeVariantOption(vi, oi)}
-                          className="px-3 rounded-xl text-ink-300 hover:text-red-400 transition-colors">×</button>
+                          className="w-9 rounded-xl text-gray-300 hover:text-red-400 transition-colors flex items-center justify-center">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
                       )}
                     </div>
                   ))}
                   <button type="button" onClick={() => addVariantOption(vi)}
-                    className="text-xs text-rose-500 hover:text-rose-600 font-semibold">+ Opción</button>
+                    className="text-xs text-rose-500 hover:text-rose-600 font-semibold flex items-center gap-1 mt-1">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Opción
+                  </button>
                 </div>
               </div>
             ))}
-          </div>
+          </SectionCard>
 
-          {/* Restock requests */}
+          {/* Restock */}
           {isEdit && restockReqs.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 sm:p-6 space-y-3">
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-bold text-amber-700 uppercase tracking-widest flex-1">
-                  Lista de espera — {restockReqs.length} persona{restockReqs.length !== 1 ? 's' : ''}
-                </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-amber-100">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">⏳</span>
+                  <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">
+                    Lista de espera — {restockReqs.length} persona{restockReqs.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
                 <button type="button"
                   onClick={() => restockReqs.filter((r) => !r.notified).forEach((r, i) => setTimeout(() => notifyRestock(r), i * 600))}
                   className="text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition-colors">
                   Avisar a todos
                 </button>
               </div>
-              <div className="divide-y divide-amber-100">
+              <div className="p-5 divide-y divide-amber-100">
                 {restockReqs.map((r) => (
                   <div key={r._id} className="flex items-center gap-3 py-2.5">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${r.notified ? 'bg-green-400' : 'bg-amber-400'}`} />
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${r.notified ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink-900">{r.phone}</p>
-                      <p className="text-[11px] text-ink-400">{r.notified ? 'Ya avisado' : 'Esperando aviso'} · {new Date(r.createdAt).toLocaleDateString('es-CR')}</p>
+                      <p className="text-sm font-semibold text-gray-900">{r.phone}</p>
+                      <p className="text-[11px] text-gray-400">{r.notified ? 'Ya avisado' : 'Esperando aviso'} · {new Date(r.createdAt).toLocaleDateString('es-CR')}</p>
                     </div>
                     <button type="button" onClick={() => notifyRestock(r)} disabled={r.notified}
                       className="flex items-center gap-1.5 text-xs font-bold bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg transition-colors">
@@ -370,7 +418,7 @@ export default function ProductForm() {
                       {r.notified ? 'Avisado' : 'Avisar'}
                     </button>
                     <button type="button" onClick={() => removeRestock(r)}
-                      className="text-ink-300 hover:text-red-500 transition-colors p-1">
+                      className="w-7 h-7 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
                     </button>
                   </div>
@@ -379,95 +427,124 @@ export default function ProductForm() {
             </div>
           )}
 
-          {/* Images */}
-          <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Imágenes</p>
+          {/* Imágenes */}
+          <SectionCard icon="🖼️" title="Imágenes"
+            action={
               <button type="button" onClick={() => fileRef.current?.click()}
-                disabled={!isEdit}
-                className="text-xs text-rose-500 hover:text-rose-600 font-semibold disabled:text-ink-300 disabled:cursor-not-allowed"
-                title={!isEdit ? 'Guardá el producto primero' : 'Subir imágenes'}>
-                + Subir
+                disabled={!isEdit || uploading}
+                className="text-xs font-bold flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg transition-colors">
+                {uploading ? (
+                  <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                )}
+                {uploading ? 'Subiendo...' : 'Subir fotos'}
               </button>
-              <input ref={fileRef} type="file" accept="image/*" multiple hidden
-                onChange={(e) => { uploadFiles(e.target.files); e.target.value = ''; }} />
-            </div>
+            }>
+            <input ref={fileRef} type="file" accept="image/*" multiple hidden
+              onChange={(e) => { uploadFiles(e.target.files); e.target.value = ''; }} />
 
             {!isEdit && (
-              <p className="text-[11px] text-ink-400">Podés agregar imágenes una vez creado el producto.</p>
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-sm text-blue-600">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Podés agregar imágenes una vez creado el producto.
+              </div>
             )}
 
             {form.images.length === 0 ? (
-              <div className="border-2 border-dashed border-cream-200 rounded-xl p-8 text-center text-ink-400 text-sm">
-                Sin imágenes todavía.
+              <div
+                onClick={() => isEdit && fileRef.current?.click()}
+                className={`border-2 border-dashed border-gray-200 rounded-xl p-10 text-center ${isEdit ? 'cursor-pointer hover:border-rose-300 hover:bg-rose-50/30 transition-colors' : ''}`}>
+                <div className="text-3xl mb-2">📷</div>
+                <p className="text-sm text-gray-400">{isEdit ? 'Hacé clic para subir imágenes' : 'Sin imágenes todavía'}</p>
+                <p className="text-[11px] text-gray-300 mt-1">JPG, PNG, WebP · máx 5 MB c/u</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                {form.images.map((url, i) => (
-                  <div key={url + i} className="relative group aspect-square rounded-xl overflow-hidden border border-cream-200">
-                    <img src={assetUrl(url)} alt="" className="w-full h-full object-cover" />
-                    {i === 0 && (
-                      <span className="absolute top-1.5 left-1.5 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Principal</span>
-                    )}
-                    <button type="button" onClick={() => removeImage(i)}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-red-500 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                      ×
+              <>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {form.images.map((url, i) => (
+                    <div key={url + i} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+                      <img src={assetUrl(url)} alt="" className="w-full h-full object-cover" />
+                      {i === 0 && (
+                        <span className="absolute top-1.5 left-1.5 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                          Principal
+                        </span>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      <button type="button" onClick={() => removeImage(i)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-red-500 text-white text-xs opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                  {isEdit && (
+                    <button type="button" onClick={() => fileRef.current?.click()}
+                      className="aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-rose-300 hover:bg-rose-50/30 transition-colors flex flex-col items-center justify-center gap-1 text-gray-300 hover:text-rose-400">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      <span className="text-[10px] font-medium">Agregar</span>
                     </button>
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-400">La primera imagen es la principal.</p>
+              </>
             )}
-            <p className="text-[11px] text-ink-400">La primera imagen es la principal. Formatos: JPG, PNG, WebP (máx 5 MB c/u).</p>
-          </div>
-
+          </SectionCard>
         </div>
 
-        {/* Right: pricing, stock, badges */}
-        <div className="space-y-5">
+        {/* ── Right column ── */}
+        <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
 
-          <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5 sm:p-6 space-y-4">
-            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Precio e inventario</p>
-
+          {/* Precio e inventario */}
+          <SectionCard icon="💰" title="Precio e inventario">
             <div>
               <label className={labelCls}>Precio (CRC) *</label>
-              <input type="number" min="0" value={form.price} onChange={setField('price')}
-                className={inputCls} placeholder="12500" required />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₡</span>
+                <input type="number" min="0" value={form.price} onChange={setField('price')}
+                  className={inputCls + ' pl-7'} placeholder="12500" required />
+              </div>
               {form.price > 0 && (
-                <p className="text-[11px] text-ink-400 mt-1">{formatCRC(Number(form.price))}</p>
+                <p className="text-sm font-bold text-rose-500 mt-1.5">{formatCRC(Number(form.price))}</p>
               )}
             </div>
 
             <div>
-              <label className={labelCls}>Precio anterior (opcional)</label>
-              <input type="number" min="0" value={form.oldPrice} onChange={setField('oldPrice')}
-                className={inputCls} placeholder="15000" />
-              <p className="text-[11px] text-ink-400 mt-1">Muestra el precio tachado (descuento).</p>
+              <label className={labelCls}>Precio anterior <span className="normal-case font-normal">(opcional)</span></label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs font-bold">₡</span>
+                <input type="number" min="0" value={form.oldPrice} onChange={setField('oldPrice')}
+                  className={inputCls + ' pl-7'} placeholder="15000" />
+              </div>
+              {discount > 0 && (
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">−{discount}% descuento</span>
+                </div>
+              )}
             </div>
 
             <div>
               <label className={labelCls}>Stock</label>
               <input type="number" min="0" value={form.stock} onChange={setField('stock')}
-                placeholder="Vacío = ilimitado"
-                className={inputCls} />
-              <p className="text-[11px] text-ink-400 mt-1">Dejá vacío si no querés controlar el inventario.</p>
+                placeholder="Vacío = ilimitado" className={inputCls} />
+              <p className="text-[11px] text-gray-400 mt-1">Dejá vacío si no querés controlar el inventario.</p>
             </div>
 
-            <label className="flex items-center gap-2 pt-1 cursor-pointer">
-              <input type="checkbox" checked={form.isActive} onChange={setField('isActive')}
-                className="w-4 h-4 rounded text-rose-500 focus:ring-rose-400" />
-              <span className="text-sm text-ink-700 font-medium">Producto activo (visible en tienda)</span>
-            </label>
-          </div>
+            <div className="flex items-center justify-between pt-2 pb-1">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">Visible en tienda</p>
+                <p className="text-[11px] text-gray-400">Los clientes pueden verlo y comprarlo</p>
+              </div>
+              <Toggle checked={form.isActive} onChange={(v) => set('isActive', v)} />
+            </div>
+          </SectionCard>
 
-          <div className="bg-white rounded-2xl border border-cream-100 shadow-card p-5 sm:p-6 space-y-4">
-            <p className="text-xs font-bold text-ink-400 uppercase tracking-widest">Etiqueta (badge)</p>
-
+          {/* Etiqueta */}
+          <SectionCard icon="🏷️" title="Etiqueta (badge)">
             <div>
               <label className={labelCls}>Texto</label>
               <input value={form.badge} onChange={setField('badge')} className={inputCls}
                 placeholder="Top ventas, Nuevo, Oferta..." />
             </div>
-
             <div>
               <label className={labelCls}>Tipo</label>
               <select value={form.badgeType} onChange={setField('badgeType')} className={inputCls + ' cursor-pointer'}>
@@ -477,7 +554,26 @@ export default function ProductForm() {
                 <option value="hot">Destacado</option>
               </select>
             </div>
-          </div>
+            {form.badge && (
+              <div className="pt-1">
+                <p className="text-[11px] text-gray-400 mb-2">Vista previa:</p>
+                <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                  form.badgeType === 'new'  ? 'bg-blue-100 text-blue-700' :
+                  form.badgeType === 'sale' ? 'bg-red-100 text-red-700' :
+                  form.badgeType === 'hot'  ? 'bg-orange-100 text-orange-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {form.badge}
+                </span>
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Guardar (mobile) */}
+          <button type="submit" disabled={saving}
+            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors text-sm shadow-sm flex items-center justify-center gap-2 lg:hidden">
+            {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear producto'}
+          </button>
         </div>
       </div>
     </form>
