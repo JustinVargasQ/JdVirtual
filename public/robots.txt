@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /checkout
+Disallow: /confirmacion
+
+Sitemap: https://jd-virtual.vercel.app/sitemap.xml

@@ -17,6 +17,8 @@ api.interceptors.request.use((config) => {
 export function assetUrl(path) {
   if (!path) return '';
   if (/^https?:\/\//i.test(path)) return path;
+  // /uploads/ paths are gone after every Render redeploy (ephemeral filesystem)
+  if (path.startsWith('/uploads/')) return '';
   return `${SERVER_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 

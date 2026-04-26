@@ -5,7 +5,9 @@ import { useProduct, useProducts } from '../hooks/useProducts';
 import useCart from '../hooks/useCart';
 import useWishlist from '../hooks/useWishlist';
 import { formatCRC } from '../lib/currency';
+import { assetUrl } from '../lib/api';
 import ProductCard from '../components/ui/ProductCard';
+import SEO from '../components/ui/SEO';
 
 /* ── Icons ── */
 const StarIcon = ({ filled }) => (
@@ -217,21 +219,6 @@ export default function ProductDetail() {
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [slug]);
 
-  useEffect(() => {
-    if (!product) return;
-    const prev = document.title;
-    document.title = `${product.name} — ${product.brand} | JD Virtual Store`;
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'description'); document.head.appendChild(meta); }
-    const prevContent = meta.getAttribute('content');
-    meta.setAttribute('content', product.description
-      ? product.description.slice(0, 155)
-      : `${product.name} de ${product.brand}. Compra online en JD Virtual Store Costa Rica.`);
-    return () => {
-      document.title = prev;
-      if (meta) meta.setAttribute('content', prevContent || '');
-    };
-  }, [product]);
 
   const cat = product?.cat || 'todos';
   const { products: related } = useProducts({ cat });
@@ -318,8 +305,20 @@ export default function ProductDetail() {
     }
   };
 
+  const productImage = assetUrl(product.images?.[0] || product.img || '');
+
   return (
     <main className="pt-24 pb-20 bg-white">
+      <SEO
+        title={`${product.name} — ${product.brand}`}
+        description={product.description
+          ? product.description.slice(0, 155)
+          : `${product.name} de ${product.brand}. Comprá online con envío a Costa Rica.`}
+        image={productImage || undefined}
+        url={`/producto/${product.slug}`}
+        type="product"
+        product={product}
+      />
 
       {/* ── Main product section ── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

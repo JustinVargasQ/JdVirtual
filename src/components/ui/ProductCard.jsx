@@ -38,6 +38,7 @@ export default function ProductCard({ product, index = 0 }) {
   const [added, setAdded]     = useState(false);
   const [hovered, setHovered] = useState(false);
   const [imgIdx, setImgIdx]   = useState(0);
+  const [imgError, setImgError] = useState(false);
   const intervalRef           = useRef(null);
   const cardRef               = useRef(null);
 
@@ -116,7 +117,7 @@ export default function ProductCard({ product, index = 0 }) {
 
           {/* ── Image ── */}
           <div className="relative overflow-hidden bg-cream-50" style={{ aspectRatio: '1' }}>
-            {currentImg ? (
+            {currentImg && !imgError ? (
               <>
                 <motion.img
                   key={imgIdx}
@@ -127,6 +128,7 @@ export default function ProductCard({ product, index = 0 }) {
                   transition={{ duration: 0.25 }}
                   className="w-full h-full object-cover transition-transform duration-700 ease-snappy group-hover:scale-105"
                   loading="lazy"
+                  onError={() => setImgError(true)}
                 />
                 {/* Image index dots when multiple images */}
                 {allImages.length > 1 && (

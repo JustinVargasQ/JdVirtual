@@ -5,6 +5,7 @@ import ProductCard from '../components/ui/ProductCard';
 import FilterBar from '../components/ui/FilterBar';
 import { useProducts, useFeatured, useCategoryPreviews } from '../hooks/useProducts';
 import useGoogleReviews from '../hooks/useGoogleReviews';
+import SEO from '../components/ui/SEO';
 
 /* ─── Slide config ─── */
 const SLIDE_CONFIG = [
@@ -1612,6 +1613,7 @@ export default function Home() {
 
   return (
     <main>
+      <SEO />
       <Hero onCatSelect={handleCatSelect} />
       <LocationSocialBar />
       <BrandMarquee />
