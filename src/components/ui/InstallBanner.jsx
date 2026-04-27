@@ -38,8 +38,8 @@ export default function InstallBanner() {
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           className="fixed bottom-20 left-4 right-4 z-40 sm:left-auto sm:right-5 sm:w-80">
           <div className="bg-white rounded-2xl shadow-modal border border-cream-100 p-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-rose-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-display font-bold text-sm">JD</span>
+            <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+              <img src="/icons/icon-192.png" alt="JD Virtual" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-ink-900">Instalar JD Virtual</p>
