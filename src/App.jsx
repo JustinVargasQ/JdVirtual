@@ -51,6 +51,12 @@ function StorefrontLayout({ children }) {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 function PageTracker() {
   const location = useLocation();
   useEffect(() => { trackPageView(location.pathname + location.search); }, [location]);
@@ -65,6 +71,7 @@ function RequireAuth({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <ServerWakeup />
       <Toaster />
       <InstallBanner />
