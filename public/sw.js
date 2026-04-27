@@ -1,4 +1,4 @@
-const CACHE = 'jd-virtual-v1';
+const CACHE = 'jd-virtual-v2';
 
 const STATIC = [
   '/',
